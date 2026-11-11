@@ -5,7 +5,7 @@ from pathlib import Path
 import sys
 
 from tv.state import StateStore
-from tv.touch import ThreeFingerHoldDetector, toggle_treehouse_channel
+from tv.touch import HoldDetector, toggle_treehouse_channel
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parent
@@ -34,11 +34,11 @@ def run():
 
     device = find_touch_device(evdev)
     state_store = StateStore(REPOSITORY_ROOT / "runtime" / "state.json")
-    detector = ThreeFingerHoldDetector()
+    detector = HoldDetector(hold_seconds=2.0, finger_count=1)
     active_slots = set()
     current_slot = 0
 
-    print("Listening for three-finger hold on %s (%s)" % (device.name, device.path), flush=True)
+    print("Listening for one-finger hold on %s (%s)" % (device.name, device.path), flush=True)
     for event in device.read_loop():
         if event.type == ecodes.EV_ABS and event.code == ecodes.ABS_MT_SLOT:
             current_slot = event.value

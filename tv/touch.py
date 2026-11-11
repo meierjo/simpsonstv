@@ -6,10 +6,10 @@ from tv.state import DEFAULT_CHANNEL_ID
 TREEHOUSE_CHANNEL_ID = "treehouse-after-dark"
 
 
-class ThreeFingerHoldDetector:
-    """Trigger once when at least three contacts remain down long enough."""
+class HoldDetector:
+    """Trigger once when the requested contacts remain down long enough."""
 
-    def __init__(self, hold_seconds=2.0, finger_count=3):
+    def __init__(self, hold_seconds=2.0, finger_count=1):
         self.hold_seconds = hold_seconds
         self.finger_count = finger_count
         self._started_at = None
@@ -29,6 +29,13 @@ class ThreeFingerHoldDetector:
             self._triggered = True
             return True
         return False
+
+
+class ThreeFingerHoldDetector(HoldDetector):
+    """Compatibility wrapper for the original prototype gesture."""
+
+    def __init__(self, hold_seconds=2.0):
+        super().__init__(hold_seconds=hold_seconds, finger_count=3)
 
 
 def toggle_treehouse_channel(state_store):

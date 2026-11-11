@@ -3,10 +3,18 @@ import unittest
 from pathlib import Path
 
 from tv.state import StateStore
-from tv.touch import ThreeFingerHoldDetector, toggle_treehouse_channel
+from tv.touch import HoldDetector, ThreeFingerHoldDetector, toggle_treehouse_channel
 
 
 class TouchTests(unittest.TestCase):
+    def test_one_finger_hold_triggers_after_two_seconds(self):
+        detector = HoldDetector(hold_seconds=2.0)
+
+        self.assertFalse(detector.update(1, 4.0))
+        self.assertFalse(detector.update(1, 5.9))
+        self.assertTrue(detector.update(1, 6.0))
+        self.assertFalse(detector.update(1, 7.0))
+
     def test_three_finger_hold_triggers_once_until_release(self):
         detector = ThreeFingerHoldDetector(hold_seconds=2.0)
 

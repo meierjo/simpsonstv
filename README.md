@@ -91,7 +91,7 @@ systemd before restarting it.
 
 ### Touch prototype
 
-The first touch milestone uses a three-finger hold for two seconds to toggle
+The first touch milestone uses a one-finger hold for two seconds to toggle
 between Springfield TV and Treehouse After Dark. The player notices the state
 change, ends the current video, and selects from the new channel immediately.
 This direct toggle is a prototype; the same gesture will open the visual
