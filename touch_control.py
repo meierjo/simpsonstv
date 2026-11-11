@@ -88,6 +88,19 @@ def run():
 
     signal.signal(signal.SIGTERM, stop_service)
     print("Listening for one-finger hold on %s (%s)" % (device.name, device.path), flush=True)
+    print(
+        "Touch mapping: x=%s..%s y=%s..%s rotation=%s display=%sx%s"
+        % (
+            mapper.x_min,
+            mapper.x_max,
+            mapper.y_min,
+            mapper.y_max,
+            mapper.rotation,
+            mapper.width,
+            mapper.height,
+        ),
+        flush=True,
+    )
 
     try:
         while True:
@@ -134,7 +147,13 @@ def run():
                             and released_position is not None
                             and tracker.active_count == 0
                         ):
-                            selected = channel_at(mapper.map(*released_position))
+                            mapped_position = mapper.map(*released_position)
+                            print(
+                                "Touch selection: raw=%s mapped=%s"
+                                % (released_position, mapped_position),
+                                flush=True,
+                            )
+                            selected = channel_at(mapped_position)
                             if selected is not None:
                                 state_store.set_channel(selected)
                                 print("Channel menu selected: %s" % selected, flush=True)
