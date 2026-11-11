@@ -1,2 +1,12 @@
-.idea/*
-.idea
+.DS_Store
+.idea/
+__pycache__/
+*.py[cod]
+
+# The video library is local media, not project source.
+videos/link_to_vids
+videos/encoded/
+videos/**/*.mp4
+videos/**/*.mkv
+videos/**/*.mov
+videos/**/*.avi
