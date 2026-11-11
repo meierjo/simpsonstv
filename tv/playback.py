@@ -1,6 +1,7 @@
 """Player backend and one-episode broadcast controller."""
 
 import subprocess
+import time
 
 from tv.state import DEFAULT_CHANNEL_ID, PlayerState
 
@@ -11,9 +12,15 @@ class OmxPlayerBackend:
     def build_command(self, path):
         return ["omxplayer", "--no-osd", "--aspect-mode", "fill", str(path)]
 
-    def play(self, episode):
+    def play(self, episode, should_stop=None):
         process = subprocess.Popen(self.build_command(episode.path))
-        return process.wait()
+        while process.poll() is None:
+            if should_stop is not None and should_stop():
+                process.terminate()
+                process.wait()
+                return 0
+            time.sleep(0.25)
+        return process.returncode
 
 
 class PlaybackController:
@@ -38,5 +45,10 @@ class PlaybackController:
             % (episode.episode_id, episode.title, channel.name),
             flush=True,
         )
-        return episode, self.backend.play(episode)
+        selected_channel_id = channel.channel_id
+
+        def channel_changed():
+            return self.state_store.load().channel_id != selected_channel_id
+
+        return episode, self.backend.play(episode, should_stop=channel_changed)
 

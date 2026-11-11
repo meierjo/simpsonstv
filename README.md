@@ -89,6 +89,19 @@ The updated player requires Python 3. Copy `systemd/tvplayer.service` to
 `/etc/systemd/system/tvplayer.service` on the original build, then reload
 systemd before restarting it.
 
+### Touch prototype
+
+The first touch milestone uses a three-finger hold for two seconds to toggle
+between Springfield TV and Treehouse After Dark. The player notices the state
+change, ends the current video, and selects from the new channel immediately.
+This direct toggle is a prototype; the same gesture will open the visual
+channel overlay in the finished experience.
+
+The listener uses the Linux `evdev` interface and the existing Goodix
+capacitive touchscreen. Install `python3-evdev`, then install and enable
+`systemd/tvtouch.service`. The service runs as `pi` with supplementary access
+to the `input` group; no new hardware or permanent user-group change is needed.
+
 ### Canonical filenames
 
 The project uses `SxxExx - Title.mp4` for episode files. Preview a safe rename

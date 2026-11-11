@@ -14,7 +14,7 @@ class FakeBackend:
     def __init__(self):
         self.played = []
 
-    def play(self, episode):
+    def play(self, episode, should_stop=None):
         self.played.append(episode)
         return 0
 
@@ -32,6 +32,8 @@ class PlaybackTests(unittest.TestCase):
     @mock.patch("subprocess.Popen")
     def test_omxplayer_uses_argument_list(self, popen):
         popen.return_value.wait.return_value = 0
+        popen.return_value.poll.return_value = 0
+        popen.return_value.returncode = 0
         episode = self.make_episode("S01E01")
 
         result = OmxPlayerBackend().play(episode)
@@ -40,6 +42,19 @@ class PlaybackTests(unittest.TestCase):
         popen.assert_called_once_with(
             ["omxplayer", "--no-osd", "--aspect-mode", "fill", "S01E01.mp4"]
         )
+
+    @mock.patch("tv.playback.time.sleep")
+    @mock.patch("subprocess.Popen")
+    def test_omxplayer_stops_cleanly_when_channel_changes(self, popen, sleep):
+        popen.return_value.poll.return_value = None
+        episode = self.make_episode("S01E01")
+
+        result = OmxPlayerBackend().play(episode, should_stop=lambda: True)
+
+        self.assertEqual(result, 0)
+        popen.return_value.terminate.assert_called_once_with()
+        popen.return_value.wait.assert_called_once_with()
+        sleep.assert_not_called()
 
     def test_controller_uses_persisted_channel_and_saves_recent_id(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
