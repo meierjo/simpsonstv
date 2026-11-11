@@ -1,7 +1,9 @@
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
+from touch_control import get_abs_info
 from tv.state import StateStore
 from tv.touch import (
     HoldDetector,
@@ -14,6 +16,30 @@ from tv.menu import channel_at
 
 
 class TouchTests(unittest.TestCase):
+    def test_old_evdev_axis_capabilities_are_supported(self):
+        expected = SimpleNamespace(min=0, max=639)
+
+        class OldInputDevice:
+            def capabilities(self, absinfo=False):
+                self.requested_absinfo = absinfo
+                return {3: [(53, expected)]}
+
+        device = OldInputDevice()
+        ecodes = SimpleNamespace(EV_ABS=3)
+
+        result = get_abs_info(device, 53, ecodes)
+
+        self.assertIs(result, expected)
+        self.assertTrue(device.requested_absinfo)
+
+    def test_new_evdev_absinfo_method_is_supported(self):
+        expected = SimpleNamespace(min=0, max=479)
+        device = SimpleNamespace(absinfo=lambda code: expected)
+
+        result = get_abs_info(device, 54, SimpleNamespace(EV_ABS=3))
+
+        self.assertIs(result, expected)
+
     def test_one_finger_hold_triggers_after_two_seconds(self):
         detector = HoldDetector(hold_seconds=2.0)
 

@@ -30,8 +30,8 @@ def find_touch_device(evdev):
 def build_mapper(device, ecodes):
     with (REPOSITORY_ROOT / "config" / "display.json").open() as display_file:
         display = json.load(display_file)
-    x_info = device.absinfo(ecodes.ABS_MT_POSITION_X)
-    y_info = device.absinfo(ecodes.ABS_MT_POSITION_Y)
+    x_info = get_abs_info(device, ecodes.ABS_MT_POSITION_X, ecodes)
+    y_info = get_abs_info(device, ecodes.ABS_MT_POSITION_Y, ecodes)
     raw_width = x_info.max - x_info.min
     raw_height = y_info.max - y_info.min
     display_is_landscape = display["width"] >= display["height"]
@@ -46,6 +46,18 @@ def build_mapper(device, ecodes):
         height=display["height"],
         rotation=rotation,
     )
+
+
+def get_abs_info(device, axis_code, ecodes):
+    """Read axis information from both old and new python-evdev releases."""
+    if hasattr(device, "absinfo"):
+        return device.absinfo(axis_code)
+
+    capabilities = device.capabilities(absinfo=True)
+    for code, abs_info in capabilities.get(ecodes.EV_ABS, []):
+        if code == axis_code:
+            return abs_info
+    raise RuntimeError("Touchscreen does not report axis %s" % axis_code)
 
 
 def run():
