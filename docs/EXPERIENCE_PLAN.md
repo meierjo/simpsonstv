@@ -53,22 +53,35 @@ Because this is a latching switch, it is not a good long-press control. Rapid
 toggle sequences are technically possible, but they make the screen flash and
 would be hard to discover or remember.
 
-### Recommended secret button
+### Hidden touch controls
 
-Add one small momentary button on the underside or concealed behind the VCR.
-GPIO 27 is the leading candidate because it is not assigned by the current
-guide, but it must be verified on the assembled Waveshare hardware before any
-soldering.
+No additional button or case modification is planned. The Waveshare display
+already provides five-point capacitive touch over I2C, so the glass becomes a
+secret control surface while normal playback remains visually uncluttered.
 
-- **Short press:** cycle to the next special channel.
-- **Double press:** return to normal random television.
-- **Hold 2 seconds:** show the current channel card again.
-- **Hold 5 seconds:** begin a safe operating-system shutdown, with a visible
-  "GOOD NIGHT, SPRINGFIELD" confirmation before it is safe to unplug.
+- **Three-finger hold for 2 seconds:** open the hidden channel overlay. This
+  is difficult to trigger accidentally but easy to demonstrate.
+- **Tap a channel card:** change channels and briefly show its broadcast ident.
+- **Swipe left or right:** browse the available special channels.
+- **Tap the currently active channel:** close the overlay and return to the
+  broadcast.
+- **Inactivity:** close the overlay automatically after 10 seconds.
 
-The exact physical placement should be tested with the printed shell before a
-hole is added to the model. A removable VCR or an underside pinhole button
-would preserve the original appearance.
+The touch UI must use large targets and work without text entry. A keyboard
+and mouse simulator will provide the same events during development on macOS.
+
+### Safe shutdown
+
+Safe shutdown belongs inside the hidden touch overlay as a large "GOOD NIGHT,
+SPRINGFIELD" control. Holding it for three seconds begins shutdown; a short
+tap does nothing beyond filling a visible progress ring. The final clip tells
+the user when the Pi may be unplugged.
+
+This is useful because abruptly removing power can corrupt a Linux SD card,
+especially during a write. It is not a launch blocker: the software will also
+minimize state writes and use atomic replacement so ordinary real-world
+unplugging is less risky. The front latching knob will retain the original
+screen-and-audio behavior and will not shut down the Pi.
 
 ## Channels and Easter eggs
 
@@ -232,24 +245,27 @@ video, and S05E10 is the only current gap until its conversion completes.
 **Done when:** automated tests prove every eligible episode is reachable,
 recent episodes are avoided, and a failed file cannot stop playback.
 
-### Phase 3 - First Easter egg
+### Phase 3 - First Easter egg and touch controls
 
 - Implement `Treehouse After Dark` from metadata tags.
-- Support keyboard control on macOS and a GPIO event on the Pi.
+- Read touch events from the existing Waveshare capacitive panel.
+- Add the three-finger hold and a keyboard/mouse equivalent on macOS.
+- Build a large-target channel overlay that disappears automatically.
 - Create a simple pre-rendered channel card.
 
-**Done when:** one action switches into an all-Halloween marathon, the selected
-mode survives a service restart, and another action returns to normal TV.
+**Done when:** the hidden overlay switches into an all-Halloween marathon, the
+selected mode survives a service restart, and normal playback has no permanent
+on-screen controls.
 
-### Phase 4 - Controls and safe shutdown
+### Phase 4 - Safe shutdown and touch polish
 
-- Prototype the hidden momentary button on GPIO 27 without modifying the case.
-- Add debounce, short/double/long press handling, and startup-safe defaults.
+- Tune touch rotation, hit areas, gesture timing, and startup-safe defaults on
+  the actual display.
 - Add the shutdown confirmation clip and system service permission.
 - Document when it is safe to unplug.
 
-**Done when:** the front knob remains unchanged, the hidden button works
-reliably, and a five-second hold produces a clean shutdown.
+**Done when:** the front knob remains unchanged, accidental shutdown is
+impractical, and a three-second on-screen hold produces a clean shutdown.
 
 ### Phase 5 - Commercial television
 
@@ -271,8 +287,10 @@ changes and the TV remains functional when it is removed.
 
 ### Phase 7 - Physical experience
 
-- Decide hidden-button placement from an enclosure fit test.
-- Update the case model only if needed.
+- Confirm that the existing screen opening permits comfortable use of every
+  touch target near the bezel.
+- Avoid case changes or additional controls unless testing finds a genuine
+  usability problem that software cannot solve.
 - Finish the 1990s toy-style retail box, assembly guide, and period copy.
 - Add a one-card quick-start guide explaining normal controls while keeping
   secret features secret.
@@ -286,8 +304,9 @@ confirms the S05E10 repair. After that, implement the channel scheduler with
 
 ## Decisions to make on the physical prototype
 
-- Hidden button under the TV versus behind/removable with the VCR
-- Whether safe shutdown should be discoverable or remain an Easter egg
+- Whether safe shutdown should be shown in the channel overlay or one level
+  deeper to prevent accidents
+- Whether the three-finger hold is detected reliably near the case bezel
 - Chronological versus shuffled Treehouse playback
 - One commercial versus a short randomized commercial block by default
 - Whether the TV should resume its previous special channel after reboot or
