@@ -46,13 +46,27 @@ Run the encoder regression tests from the repository root:
 python3 -m unittest discover -s tests -v
 ```
 
+## Library audit
+
+The catalog tool checks a video directory without renaming or modifying any
+files. It accepts both zero-padded names such as `S03E01` and existing names
+such as `S03E1`, normalizing both to the same episode ID in memory:
+
+```bash
+python3 tools/catalog.py /path/to/encoded/videos
+```
+
+Add `--strict` when using it in an automated check. Strict mode exits with a
+failure status when an episode is missing, duplicated, outside seasons 1-10,
+or has a filename without a recognizable season and episode number.
+
 ## Planned extensions
 
 - Episode catalog validation and metadata
 - Normal, Halloween, holiday, and character-focused playback modes
 - Recently-played avoidance
 - Period-correct commercials selected by original broadcast year
-- Secret touchscreen sequence or hidden hardware control
+- Secret touchscreen channel controls
 - Custom retail-box artwork and print-ready packaging
 
 This project does not include television episodes or other copyrighted media.

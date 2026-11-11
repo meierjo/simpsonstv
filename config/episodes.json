@@ -1,0 +1,41 @@
+{
+  "episodes": {
+    "S02E03": {
+      "title": "Treehouse of Horror",
+      "tags": ["halloween", "treehouse-of-horror"]
+    },
+    "S03E07": {
+      "title": "Treehouse of Horror II",
+      "tags": ["halloween", "treehouse-of-horror"]
+    },
+    "S04E05": {
+      "title": "Treehouse of Horror III",
+      "tags": ["halloween", "treehouse-of-horror"]
+    },
+    "S05E05": {
+      "title": "Treehouse of Horror IV",
+      "tags": ["halloween", "treehouse-of-horror"]
+    },
+    "S06E06": {
+      "title": "Treehouse of Horror V",
+      "tags": ["halloween", "treehouse-of-horror"]
+    },
+    "S07E06": {
+      "title": "Treehouse of Horror VI",
+      "tags": ["halloween", "treehouse-of-horror"]
+    },
+    "S08E01": {
+      "title": "Treehouse of Horror VII",
+      "tags": ["halloween", "treehouse-of-horror"]
+    },
+    "S09E04": {
+      "title": "Treehouse of Horror VIII",
+      "tags": ["halloween", "treehouse-of-horror"]
+    },
+    "S10E04": {
+      "title": "Treehouse of Horror IX",
+      "tags": ["halloween", "treehouse-of-horror"]
+    }
+  }
+}
+

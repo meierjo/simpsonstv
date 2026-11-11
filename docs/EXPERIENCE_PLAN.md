@@ -223,7 +223,7 @@ unless explicitly requested.
 - Replace shell-based encoding with safe FFmpeg process arguments.
 - Add filename regression tests.
 
-### Phase 1 - Know the library
+### Phase 1 - Know the library (complete)
 
 - Build a read-only catalog scanner.
 - Normalize season/episode IDs in memory.
@@ -231,8 +231,10 @@ unless explicitly requested.
 - Generate a starter metadata file and a human-readable audit report.
 - Add the curated Treehouse of Horror tags.
 
-**Done when:** the library can be validated without touching or renaming any
-video, and S05E10 is the only current gap until its conversion completes.
+**Result:** the read-only audit recognizes all 226 expected episodes, including
+the restored S05E10, with no missing episodes, duplicates, unexpected IDs, or
+unrecognized filenames. Starter metadata tags all nine Treehouse of Horror
+episodes from seasons 2-10.
 
 ### Phase 2 - Dependable channel engine
 
@@ -297,10 +299,9 @@ changes and the TV remains functional when it is removed.
 
 ## First implementation slice
 
-The next code change should be the read-only catalog scanner and audit report.
-It gives every later feature a reliable view of the library and immediately
-confirms the S05E10 repair. After that, implement the channel scheduler with
-`Treehouse After Dark` as its first end-to-end mode.
+The next code change should be the channel scheduler with recent-play
+avoidance. `Treehouse After Dark` will be its first end-to-end special mode,
+using the curated metadata rather than title matching.
 
 ## Decisions to make on the physical prototype
 
