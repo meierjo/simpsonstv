@@ -1,0 +1,15 @@
+{
+  "channels": [
+    {
+      "id": "springfield-tv",
+      "name": "Channel 6 - Springfield TV",
+      "required_tags": []
+    },
+    {
+      "id": "treehouse-after-dark",
+      "name": "Treehouse After Dark",
+      "required_tags": ["treehouse-of-horror"]
+    }
+  ]
+}
+

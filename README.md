@@ -60,6 +60,41 @@ Add `--strict` when using it in an automated check. Strict mode exits with a
 failure status when an episode is missing, duplicated, outside seasons 1-10,
 or has a filename without a recognizable season and episode number.
 
+Preview the scheduler without playing any video:
+
+```bash
+python3 tools/preview_channel.py /path/to/encoded/videos \
+  --channel treehouse-after-dark --count 9
+```
+
+Channel definitions live in `config/channels.json`; episode tags live in
+`config/episodes.json`.
+
+### Canonical filenames
+
+The project uses `SxxExx - Title.mp4` for episode files. Preview a safe rename
+of an existing library on the Pi:
+
+```bash
+cd ~/simpsonstv
+python3 tools/rename_episodes.py ~/simpsonstv/videos
+```
+
+Review every proposed change, then apply the same validated plan:
+
+```bash
+python3 tools/rename_episodes.py ~/simpsonstv/videos --apply
+```
+
+The renamer refuses to run when duplicate IDs, out-of-range episodes, unknown
+video filenames, or destination collisions are present. It never changes
+video contents.
+
+Future encoding runs produce canonical names automatically. A title in
+`config/episodes.json` takes precedence; otherwise the title already present
+in the source filename is normalized. Tags for secret channels stay in the
+metadata rather than being embedded in filenames.
+
 ## Planned extensions
 
 - Episode catalog validation and metadata

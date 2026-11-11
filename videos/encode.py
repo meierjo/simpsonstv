@@ -7,6 +7,15 @@ and dollar signs.
 
 from pathlib import Path
 import subprocess
+import sys
+
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+if str(REPOSITORY_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPOSITORY_ROOT))
+
+from tv.channels import load_episode_metadata  # noqa: E402
+from tv.naming import canonical_episode_filename  # noqa: E402
 
 
 VIDEO_SUFFIXES = {".mp4", ".mkv", ".mov", ".avi"}
@@ -52,15 +61,19 @@ def find_videos(directory, destination_directory):
             yield path
 
 
-def encode_directory(directory):
+def encode_directory(directory, metadata=None):
     """Encode every supported video below *directory* into `encoded`."""
     directory = Path(directory).resolve()
     destination_directory = directory / "encoded"
     destination_directory.mkdir(exist_ok=True)
+    metadata = metadata or {}
 
     source_videos = list(find_videos(directory, destination_directory))
     for input_path in source_videos:
-        output_path = destination_directory / (input_path.stem + ".mp4")
+        output_filename = canonical_episode_filename(input_path, metadata)
+        if output_filename is None:
+            output_filename = input_path.stem + ".mp4"
+        output_path = destination_directory / output_filename
         if output_path.is_file():
             continue
 
@@ -72,7 +85,9 @@ def encode_directory(directory):
 
 
 def main():
-    encode_directory(Path(__file__).resolve().parent)
+    metadata_path = REPOSITORY_ROOT / "config" / "episodes.json"
+    metadata = load_episode_metadata(metadata_path) if metadata_path.is_file() else {}
+    encode_directory(Path(__file__).resolve().parent, metadata)
 
 
 if __name__ == "__main__":

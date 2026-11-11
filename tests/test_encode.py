@@ -59,6 +59,24 @@ class EncodeTests(unittest.TestCase):
 
             run.assert_not_called()
 
+    @mock.patch.object(subprocess, "run")
+    def test_episode_output_uses_canonical_name(self, run):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            directory = Path(temporary_directory)
+            source = directory / "The Simpsons S03E7 old title.mkv"
+            source.touch()
+
+            encode.encode_directory(
+                directory,
+                {"S03E07": {"title": "Treehouse of Horror II"}},
+            )
+
+            command = run.call_args.args[0]
+            self.assertEqual(
+                command[-1],
+                str(directory.resolve() / "encoded" / "S03E07 - Treehouse of Horror II.mp4"),
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
