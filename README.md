@@ -97,11 +97,12 @@ then tap a large channel card; playback resumes immediately in that mode. The
 menu closes without changing channels after ten seconds of inactivity.
 
 The listener uses the Linux `evdev` interface and the existing Goodix
-capacitive touchscreen. Install `python3-evdev` and `python3-pygame`, then
-install and enable `systemd/tvtouch.service`. The service runs as `pi` with
-supplementary access to the `input` and `video` groups; no new hardware or
-permanent user-group change is needed. If the menu cannot initialize, the
-gesture safely falls back to the original direct channel toggle.
+capacitive touchscreen. The menu itself is a tiny pre-rendered H.264 clip
+shown through OMXPlayer, avoiding the console and graphics overhead of a
+second UI framework. Install `python3-evdev`, then install and enable
+`systemd/tvtouch.service`. The service runs as `pi` with supplementary access
+to the `input` and `video` groups. If the menu cannot initialize, the gesture
+safely falls back to the original direct channel toggle.
 
 ### Canonical filenames
 

@@ -8,7 +8,7 @@ import signal
 import sys
 import time
 
-from tv.menu import PygameChannelMenu, channel_at
+from tv.menu import OmxChannelMenu, channel_at
 from tv.state import StateStore
 from tv.touch import HoldDetector, MultiTouchTracker, TouchMapper, toggle_treehouse_channel
 
@@ -106,9 +106,10 @@ def run():
                     if not menu_open:
                         if detector.update(tracker.active_count, event.timestamp()):
                             try:
-                                menu = PygameChannelMenu()
-                                menu.show(state_store.load().channel_id)
                                 state_store.set_menu_open(True)
+                                time.sleep(0.4)
+                                menu = OmxChannelMenu(REPOSITORY_ROOT / "assets")
+                                menu.show(state_store.load().channel_id)
                                 menu_open = True
                                 menu_armed = False
                                 menu_deadline = time.monotonic() + MENU_TIMEOUT_SECONDS
