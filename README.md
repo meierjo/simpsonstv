@@ -70,6 +70,25 @@ python3 tools/preview_channel.py /path/to/encoded/videos \
 Channel definitions live in `config/channels.json`; episode tags live in
 `config/episodes.json`.
 
+### Switching channels before the touch UI
+
+The player reads a small persistent state file before choosing each episode.
+List or select channels from the Pi command line:
+
+```bash
+python3 tools/set_channel.py --list
+python3 tools/set_channel.py treehouse-after-dark
+python3 tools/set_channel.py springfield-tv
+```
+
+The selected channel takes effect after the current episode. Restart
+`tvplayer.service` after selecting a channel to switch immediately. Recent
+episode history is preserved across service restarts.
+
+The updated player requires Python 3. Copy `systemd/tvplayer.service` to
+`/etc/systemd/system/tvplayer.service` on the original build, then reload
+systemd before restarting it.
+
 ### Canonical filenames
 
 The project uses `SxxExx - Title.mp4` for episode files. Preview a safe rename

@@ -1,32 +1,65 @@
-import os
-import random
+#!/usr/bin/env python3
+"""Run the Simpsons TV broadcast continuously."""
+
+from pathlib import Path
+import sys
 import time
-from subprocess import PIPE, Popen, STDOUT
 
-directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'videos')
-
-videos = []
-
-
-def getVideos():
-    global videos
-    videos = []
-    for file in os.listdir(directory):
-        if file.lower().endswith('.mp4'):
-            videos.append(os.path.join(directory, file))
+from tv.catalog import scan_library
+from tv.channels import load_channels, load_episode_metadata
+from tv.playback import OmxPlayerBackend, PlaybackController
+from tv.scheduler import EpisodeScheduler
+from tv.state import StateStore
 
 
-def playVideos():
-    global videos
-    if len(videos) == 0:
-        getVideos()
-        time.sleep(5)
-        return
-    random.shuffle(videos)
-    for video in videos:
-        playProcess = Popen(['omxplayer', '--no-osd', '--aspect-mode', 'fill', video])
-        playProcess.wait()
+REPOSITORY_ROOT = Path(__file__).resolve().parent
 
 
-while (True):
-    playVideos()
+def main():
+    library = REPOSITORY_ROOT / "videos"
+    report = scan_library(library)
+    if not report.episodes:
+        print("No recognized episode videos found in %s" % library, file=sys.stderr)
+        return 1
+
+    metadata = load_episode_metadata(REPOSITORY_ROOT / "config" / "episodes.json")
+    channels = load_channels(REPOSITORY_ROOT / "config" / "channels.json")
+    state_store = StateStore(REPOSITORY_ROOT / "runtime" / "state.json")
+    initial_state = state_store.load()
+    if initial_state.channel_id not in channels:
+        initial_state = state_store.set_channel("springfield-tv")
+    scheduler = EpisodeScheduler(
+        report.episodes,
+        metadata,
+        recent_ids=initial_state.recent_ids,
+    )
+    controller = PlaybackController(
+        channels=channels,
+        scheduler=scheduler,
+        state_store=state_store,
+        backend=OmxPlayerBackend(),
+    )
+
+    print(
+        "Loaded %d episodes; starting %s"
+        % (report.unique_episode_count, channels[initial_state.channel_id].name),
+        flush=True,
+    )
+    while True:
+        try:
+            episode, return_code = controller.play_next()
+            if return_code:
+                print(
+                    "Playback failed for %s with status %s"
+                    % (episode.episode_id, return_code),
+                    file=sys.stderr,
+                    flush=True,
+                )
+                time.sleep(2)
+        except Exception as error:
+            print("Playback error: %s" % error, file=sys.stderr, flush=True)
+            time.sleep(5)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

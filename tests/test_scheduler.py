@@ -85,6 +85,20 @@ class ChannelTests(unittest.TestCase):
         with self.assertRaises(NoEligibleEpisodes):
             scheduler.choose_next(channel)
 
+    def test_recent_history_can_be_restored_after_restart(self):
+        episodes = (make_episode("S01E01"), make_episode("S01E02"))
+        scheduler = EpisodeScheduler(
+            episodes,
+            {},
+            recent_limit=1,
+            recent_ids=("S01E01",),
+            random_source=random.Random(1),
+        )
+
+        selected = scheduler.choose_next(Channel("test", "Test", ()))
+
+        self.assertEqual(selected.episode_id, "S01E02")
+
 
 if __name__ == "__main__":
     unittest.main()

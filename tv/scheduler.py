@@ -12,14 +12,21 @@ class NoEligibleEpisodes(ValueError):
 class EpisodeScheduler:
     """Select episodes for channels while avoiding recent repeats."""
 
-    def __init__(self, episodes, metadata, recent_limit=12, random_source=None):
+    def __init__(
+        self,
+        episodes,
+        metadata,
+        recent_limit=12,
+        random_source=None,
+        recent_ids=None,
+    ):
         if recent_limit < 0:
             raise ValueError("recent_limit cannot be negative")
         self._episodes = tuple(episodes)
         self._metadata = metadata
         self._recent_limit = recent_limit
         self._random = random_source or random.Random()
-        self._recent_ids = []
+        self._recent_ids = list(recent_ids or ())[-recent_limit:] if recent_limit else []
 
     @property
     def recent_ids(self):
