@@ -36,9 +36,28 @@ class ChannelTests(unittest.TestCase):
         )
 
         self.assertEqual(len(eligible), 9)
+        expected_ids = {
+            episode_id
+            for episode_id, metadata in self.metadata.items()
+            if "treehouse-of-horror" in metadata["tags"]
+        }
         self.assertEqual(
-            {episode.episode_id for episode in eligible}, set(self.metadata)
+            {episode.episode_id for episode in eligible}, expected_ids
         )
+
+    def test_curated_channels_have_expected_episode_counts(self):
+        expected_counts = {
+            "holiday-special": 4,
+            "sideshow-bob": 6,
+            "krusty-classics": 6,
+        }
+        for channel_id, expected_count in expected_counts.items():
+            eligible = episodes_for_channel(
+                self.episodes,
+                self.metadata,
+                self.channels[channel_id],
+            )
+            self.assertEqual(len(eligible), expected_count, channel_id)
 
     def test_normal_channel_includes_every_episode(self):
         eligible = episodes_for_channel(

@@ -1,0 +1,7 @@
+[Unit]
+Description=Safely shut down the Simpsons TV
+
+[Service]
+Type=oneshot
+ExecStartPre=/bin/rm -f /home/pi/simpsonstv/runtime/shutdown.request
+ExecStart=/sbin/shutdown -h now

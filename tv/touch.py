@@ -96,6 +96,14 @@ class MultiTouchTracker:
     def active_count(self):
         return len(self.contacts)
 
+    @property
+    def primary_position(self):
+        for slot in sorted(self.contacts):
+            contact = self.contacts[slot]
+            if contact.get("x") is not None and contact.get("y") is not None:
+                return (contact["x"], contact["y"])
+        return None
+
     def select_slot(self, slot):
         self.current_slot = slot
 

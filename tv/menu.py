@@ -8,6 +8,7 @@ import subprocess
 
 LEFT_CARD = (28, 112, 278, 260)
 RIGHT_CARD = (334, 112, 278, 260)
+SHUTDOWN_CARD = (150, 390, 340, 72)
 
 
 def channel_at(position):
@@ -18,6 +19,11 @@ def channel_at(position):
     if _contains(RIGHT_CARD, x, y):
         return "treehouse-after-dark"
     return None
+
+
+def shutdown_at(position):
+    """Return True when *position* is inside the guarded shutdown card."""
+    return _contains(SHUTDOWN_CARD, position[0], position[1])
 
 
 def _contains(rectangle, x, y):
@@ -37,6 +43,12 @@ class OmxChannelMenu:
         asset = self.asset_directory / stem
         if not asset.is_file():
             raise RuntimeError("Channel menu asset is missing: %s" % asset)
+        self.show_asset(stem)
+
+    def show_asset(self, filename):
+        asset = self.asset_directory / filename
+        if not asset.is_file():
+            raise RuntimeError("Menu asset is missing: %s" % asset)
         self.process = subprocess.Popen(
             ["omxplayer", "--no-osd", "--aspect-mode", "fill", str(asset)],
             start_new_session=True,

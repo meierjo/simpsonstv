@@ -12,7 +12,7 @@ from tv.touch import (
     TouchMapper,
     toggle_treehouse_channel,
 )
-from tv.menu import channel_at
+from tv.menu import channel_at, shutdown_at
 
 
 class TouchTests(unittest.TestCase):
@@ -97,6 +97,11 @@ class TouchTests(unittest.TestCase):
         self.assertEqual(channel_at((480, 200)), "treehouse-after-dark")
         self.assertIsNone(channel_at((320, 450)))
 
+    def test_shutdown_card_is_separate_from_channel_cards(self):
+        self.assertTrue(shutdown_at((320, 425)))
+        self.assertFalse(shutdown_at((150, 200)))
+        self.assertIsNone(channel_at((320, 425)))
+
     def test_touch_tracker_retains_release_position(self):
         tracker = MultiTouchTracker()
         tracker.select_slot(0)
@@ -109,6 +114,14 @@ class TouchTests(unittest.TestCase):
         self.assertEqual(tracker.active_count, 0)
         self.assertEqual(tracker.take_released_position(), (100, 200))
         self.assertIsNone(tracker.take_released_position())
+
+    def test_touch_tracker_exposes_active_position_for_shutdown_hold(self):
+        tracker = MultiTouchTracker()
+        tracker.set_tracking_id(44)
+        tracker.set_x(250)
+        tracker.set_y(400)
+
+        self.assertEqual(tracker.primary_position, (250, 400))
 
 
 if __name__ == "__main__":

@@ -9,6 +9,21 @@
       "id": "treehouse-after-dark",
       "name": "Treehouse After Dark",
       "required_tags": ["treehouse-of-horror"]
+    },
+    {
+      "id": "holiday-special",
+      "name": "Holiday Special",
+      "required_tags": ["holiday"]
+    },
+    {
+      "id": "sideshow-bob",
+      "name": "Sideshow Bob Marathon",
+      "required_tags": ["sideshow-bob"]
+    },
+    {
+      "id": "krusty-classics",
+      "name": "Krusty Classics",
+      "required_tags": ["krusty"]
     }
   ]
 }

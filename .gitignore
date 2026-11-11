@@ -11,3 +11,9 @@ videos/**/*.mp4
 videos/**/*.mkv
 videos/**/*.mov
 videos/**/*.avi
+
+# Commercial media is local and may have separate rights restrictions.
+commercials/**/*.mp4
+commercials/**/*.mkv
+commercials/**/*.mov
+commercials/**/*.avi

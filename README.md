@@ -104,6 +104,37 @@ second UI framework. Install `python3-evdev`, then install and enable
 to the `input` and `video` groups. If the menu cannot initialize, the gesture
 safely falls back to the original direct channel toggle.
 
+### Safe shutdown
+
+The third Touch Tuner card requires a continuous three-second hold. It plays a
+short confirmation clip and creates a local shutdown request. A root-owned
+systemd path unit handles the privileged operating-system shutdown, so the
+touch listener itself continues to run as the unprivileged `pi` user.
+
+Install the shutdown units once on the Pi:
+
+```bash
+sudo cp systemd/tvpower.service systemd/tvpower.path /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now tvpower.path
+```
+
+The request file is removed before shutdown so it cannot cause a shutdown loop
+on the next boot.
+
+## Curated channels
+
+In addition to Springfield TV and Treehouse After Dark, the metadata now
+defines Holiday Special, Sideshow Bob Marathon, and Krusty Classics. These can
+be previewed or selected from the command line while the touch menu gains
+pagination in a later interface pass:
+
+```bash
+python3 tools/preview_channel.py ~/simpsonstv/videos --channel holiday-special
+python3 tools/set_channel.py sideshow-bob
+python3 tools/set_channel.py krusty-classics
+```
+
 ### Canonical filenames
 
 The project uses `SxxExx - Title.mp4` for episode files. Preview a safe rename

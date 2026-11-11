@@ -40,6 +40,20 @@ class MenuTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "asset is missing"):
                 menu.show("springfield-tv")
 
+    @mock.patch("tv.menu.subprocess.Popen")
+    def test_goodnight_clip_uses_same_player_path(self, popen):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            asset_directory = Path(temporary_directory)
+            asset = asset_directory / "good_night_springfield.mp4"
+            asset.touch()
+
+            OmxChannelMenu(asset_directory).show_asset(asset.name)
+
+            popen.assert_called_once_with(
+                ["omxplayer", "--no-osd", "--aspect-mode", "fill", str(asset)],
+                start_new_session=True,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

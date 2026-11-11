@@ -13,6 +13,7 @@ WIDTH = 640
 HEIGHT = 480
 LEFT_CARD = (28, 112, 306, 372)
 RIGHT_CARD = (334, 112, 612, 372)
+SHUTDOWN_CARD = (150, 390, 490, 462)
 
 
 def font(size):
@@ -73,8 +74,20 @@ def build_image(active_channel):
         (210, 73, 139),
         active_channel == "treehouse-after-dark",
     )
-    centered(draw, "TAP A CHANNEL  -  WAIT TO CANCEL", WIDTH // 2, 425, font(20), (223, 214, 235))
-    centered(draw, "NOW WITH SECRET MODES!", WIDTH // 2, 452, font(16), (255, 226, 85))
+    draw.rectangle(SHUTDOWN_CARD, fill=(101, 35, 63), outline=(242, 234, 245), width=4)
+    centered(draw, "GOOD NIGHT, SPRINGFIELD", WIDTH // 2, 399, font(22), (255, 246, 197))
+    centered(draw, "HOLD 3 SECONDS TO SHUT DOWN", WIDTH // 2, 432, font(15), (255, 226, 85))
+    return image
+
+
+def build_goodnight_image():
+    image = Image.new("RGB", (WIDTH, HEIGHT), (18, 9, 34))
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((0, 0, WIDTH, 20), fill=(247, 196, 54))
+    centered(draw, "GOOD NIGHT,", WIDTH // 2, 140, font(58), (255, 246, 197))
+    centered(draw, "SPRINGFIELD", WIDTH // 2, 215, font(58), (255, 226, 85))
+    centered(draw, "SHUTTING DOWN SAFELY...", WIDTH // 2, 330, font(26), (40, 191, 190))
+    centered(draw, "UNPLUG AFTER THE SCREEN GOES DARK", WIDTH // 2, 382, font(18), (223, 214, 235))
     return image
 
 
@@ -114,13 +127,25 @@ def encode_clip(png_path, mp4_path):
 
 def main():
     ASSET_DIRECTORY.mkdir(exist_ok=True)
-    for channel_id in ("springfield-tv", "treehouse-after-dark"):
+    for channel_id in (
+        "springfield-tv",
+        "treehouse-after-dark",
+        "holiday-special",
+        "sideshow-bob",
+        "krusty-classics",
+    ):
         stem = "channel_menu_" + channel_id.replace("-", "_")
         png_path = ASSET_DIRECTORY / (stem + ".png")
         mp4_path = ASSET_DIRECTORY / (stem + ".mp4")
         build_image(channel_id).save(png_path)
         encode_clip(png_path, mp4_path)
         print("Built %s" % mp4_path)
+
+    png_path = ASSET_DIRECTORY / "good_night_springfield.png"
+    mp4_path = ASSET_DIRECTORY / "good_night_springfield.mp4"
+    build_goodnight_image().save(png_path)
+    encode_clip(png_path, mp4_path)
+    print("Built %s" % mp4_path)
 
 
 if __name__ == "__main__":

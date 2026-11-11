@@ -8,7 +8,7 @@ import signal
 import sys
 import time
 
-from tv.menu import OmxChannelMenu, channel_at
+from tv.menu import OmxChannelMenu, channel_at, shutdown_at
 from tv.state import StateStore
 from tv.touch import HoldDetector, MultiTouchTracker, TouchMapper, toggle_treehouse_channel
 
@@ -74,6 +74,7 @@ def run():
     state_store = StateStore(REPOSITORY_ROOT / "runtime" / "state.json")
     state_store.set_menu_open(False)
     detector = HoldDetector(hold_seconds=2.0, finger_count=1)
+    shutdown_detector = HoldDetector(hold_seconds=3.0, finger_count=1)
     tracker = MultiTouchTracker()
     menu = None
     menu_open = False
@@ -137,6 +138,20 @@ def run():
                                     flush=True,
                                 )
                     else:
+                        active_position = tracker.primary_position
+                        shutdown_contact = False
+                        if menu_armed and active_position is not None:
+                            shutdown_contact = shutdown_at(mapper.map(*active_position))
+                        if shutdown_detector.update(
+                            1 if shutdown_contact else 0, event.timestamp()
+                        ):
+                            print("Safe shutdown requested", flush=True)
+                            _request_shutdown(menu, state_store)
+                            menu_open = False
+                            menu = None
+                            detector.update(0, event.timestamp())
+                            continue
+
                         if not menu_armed and tracker.active_count == 0:
                             # Ignore the release belonging to the opening hold.
                             menu_armed = True
@@ -164,6 +179,7 @@ def run():
                 menu_open = _close_menu(menu, state_store)
                 menu = None
                 detector.update(0, time.time())
+                shutdown_detector.update(0, time.time())
     except KeyboardInterrupt:
         return 0
     finally:
@@ -188,6 +204,25 @@ def _close_menu(menu, state_store):
     if menu is not None:
         menu.close()
     return False
+
+
+def _request_shutdown(menu, state_store):
+    if menu is not None:
+        menu.close()
+    goodbye = OmxChannelMenu(REPOSITORY_ROOT / "assets")
+    try:
+        goodbye.show_asset("good_night_springfield.mp4")
+        time.sleep(2.5)
+    finally:
+        goodbye.close()
+
+    request_path = REPOSITORY_ROOT / "runtime" / "shutdown.request"
+    request_path.parent.mkdir(parents=True, exist_ok=True)
+    request_path.touch()
+    # If the path unit was not installed, do not leave playback permanently
+    # paused. A correctly installed unit will already be powering down.
+    time.sleep(1)
+    state_store.set_menu_open(False)
 
 
 if __name__ == "__main__":

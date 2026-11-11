@@ -1,0 +1,9 @@
+[Unit]
+Description=Watch for a Simpsons TV safe-shutdown request
+
+[Path]
+PathExists=/home/pi/simpsonstv/runtime/shutdown.request
+Unit=tvpower.service
+
+[Install]
+WantedBy=multi-user.target

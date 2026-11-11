@@ -87,9 +87,12 @@ class CatalogTests(unittest.TestCase):
             "S09E04",
             "S10E04",
         }
-        self.assertEqual(set(episodes), expected_ids)
-        for metadata in episodes.values():
-            self.assertIn("treehouse-of-horror", metadata["tags"])
+        treehouse_ids = {
+            episode_id
+            for episode_id, metadata in episodes.items()
+            if "treehouse-of-horror" in metadata["tags"]
+        }
+        self.assertEqual(treehouse_ids, expected_ids)
 
 
 if __name__ == "__main__":

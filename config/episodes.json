@@ -1,36 +1,96 @@
 {
   "episodes": {
+    "S01E01": {
+      "title": "Simpsons Roasting on an Open Fire",
+      "tags": ["christmas", "holiday"]
+    },
+    "S01E12": {
+      "title": "Krusty Gets Busted",
+      "tags": ["krusty", "sideshow-bob"]
+    },
     "S02E03": {
       "title": "Treehouse of Horror",
       "tags": ["halloween", "treehouse-of-horror"]
+    },
+    "S02E07": {
+      "title": "Bart vs. Thanksgiving",
+      "tags": ["holiday", "thanksgiving"]
+    },
+    "S03E06": {
+      "title": "Like Father, Like Clown",
+      "tags": ["krusty"]
     },
     "S03E07": {
       "title": "Treehouse of Horror II",
       "tags": ["halloween", "treehouse-of-horror"]
     },
+    "S03E21": {
+      "title": "Black Widower",
+      "tags": ["sideshow-bob"]
+    },
     "S04E05": {
       "title": "Treehouse of Horror III",
       "tags": ["halloween", "treehouse-of-horror"]
+    },
+    "S04E22": {
+      "title": "Krusty Gets Kancelled",
+      "tags": ["krusty"]
+    },
+    "S05E02": {
+      "title": "Cape Feare",
+      "tags": ["sideshow-bob"]
     },
     "S05E05": {
       "title": "Treehouse of Horror IV",
       "tags": ["halloween", "treehouse-of-horror"]
     },
+    "S06E05": {
+      "title": "Sideshow Bob Roberts",
+      "tags": ["sideshow-bob"]
+    },
     "S06E06": {
       "title": "Treehouse of Horror V",
       "tags": ["halloween", "treehouse-of-horror"]
+    },
+    "S06E15": {
+      "title": "Homie the Clown",
+      "tags": ["krusty"]
     },
     "S07E06": {
       "title": "Treehouse of Horror VI",
       "tags": ["halloween", "treehouse-of-horror"]
     },
+    "S07E09": {
+      "title": "Sideshow Bob's Last Gleaming",
+      "tags": ["sideshow-bob"]
+    },
+    "S07E11": {
+      "title": "Marge Be Not Proud",
+      "tags": ["christmas", "holiday"]
+    },
+    "S07E15": {
+      "title": "Bart the Fink",
+      "tags": ["krusty"]
+    },
     "S08E01": {
       "title": "Treehouse of Horror VII",
       "tags": ["halloween", "treehouse-of-horror"]
     },
+    "S08E16": {
+      "title": "Brother from Another Series",
+      "tags": ["sideshow-bob"]
+    },
     "S09E04": {
       "title": "Treehouse of Horror VIII",
       "tags": ["halloween", "treehouse-of-horror"]
+    },
+    "S09E10": {
+      "title": "Miracle on Evergreen Terrace",
+      "tags": ["christmas", "holiday"]
+    },
+    "S09E15": {
+      "title": "The Last Temptation of Krusty",
+      "tags": ["krusty"]
     },
     "S10E04": {
       "title": "Treehouse of Horror IX",
