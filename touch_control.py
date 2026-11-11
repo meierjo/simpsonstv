@@ -32,11 +32,6 @@ def build_mapper(device, ecodes):
         display = json.load(display_file)
     x_info = get_abs_info(device, ecodes.ABS_MT_POSITION_X, ecodes)
     y_info = get_abs_info(device, ecodes.ABS_MT_POSITION_Y, ecodes)
-    raw_width = x_info.max - x_info.min
-    raw_height = y_info.max - y_info.min
-    display_is_landscape = display["width"] >= display["height"]
-    raw_is_landscape = raw_width >= raw_height
-    rotation = 0 if display_is_landscape == raw_is_landscape else display["touch_rotation"]
     return TouchMapper(
         x_info.min,
         x_info.max,
@@ -44,7 +39,10 @@ def build_mapper(device, ecodes):
         y_info.max,
         width=display["width"],
         height=display["height"],
-        rotation=rotation,
+        # Goodix reports a 640x480 range on this build even though its axes
+        # still need the configured portrait-to-landscape transformation.
+        # Axis ranges alone therefore cannot determine touch rotation.
+        rotation=display["touch_rotation"],
     )
 
 

@@ -83,6 +83,15 @@ class TouchTests(unittest.TestCase):
         self.assertEqual(mapper.map(479, 0), (0, 0))
         self.assertEqual(mapper.map(0, 639), (639, 479))
 
+    def test_real_goodix_samples_map_to_the_touched_cards(self):
+        mapper = TouchMapper(0, 639, 0, 479, width=640, height=480, rotation=90)
+
+        left_tap = mapper.map(274, 126)
+        right_tap = mapper.map(295, 359)
+
+        self.assertEqual(channel_at(left_tap), "springfield-tv")
+        self.assertEqual(channel_at(right_tap), "treehouse-after-dark")
+
     def test_channel_cards_have_large_hit_areas(self):
         self.assertEqual(channel_at((150, 200)), "springfield-tv")
         self.assertEqual(channel_at((480, 200)), "treehouse-after-dark")
