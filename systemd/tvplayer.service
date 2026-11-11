@@ -9,6 +9,9 @@ WorkingDirectory=/home/pi/simpsonstv
 ExecStart=/usr/bin/python3 /home/pi/simpsonstv/player.py
 Restart=always
 RestartSec=3
+KillMode=control-group
+TimeoutStopSec=5
+SendSIGKILL=yes
 
 [Install]
 WantedBy=multi-user.target

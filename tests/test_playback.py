@@ -2,6 +2,8 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
+import signal
+import subprocess
 
 from tv.catalog import Episode
 from tv.channels import Channel
@@ -40,21 +42,36 @@ class PlaybackTests(unittest.TestCase):
 
         self.assertEqual(result, 0)
         popen.assert_called_once_with(
-            ["omxplayer", "--no-osd", "--aspect-mode", "fill", "S01E01.mp4"]
+            ["omxplayer", "--no-osd", "--aspect-mode", "fill", "S01E01.mp4"],
+            start_new_session=True,
         )
 
     @mock.patch("tv.playback.time.sleep")
+    @mock.patch("tv.playback.os.killpg")
     @mock.patch("subprocess.Popen")
-    def test_omxplayer_stops_cleanly_when_channel_changes(self, popen, sleep):
+    def test_omxplayer_stops_group_when_channel_changes(self, popen, killpg, sleep):
         popen.return_value.poll.return_value = None
+        popen.return_value.pid = 123
         episode = self.make_episode("S01E01")
 
         result = OmxPlayerBackend().play(episode, should_stop=lambda: True)
 
         self.assertEqual(result, 0)
-        popen.return_value.terminate.assert_called_once_with()
-        popen.return_value.wait.assert_called_once_with()
+        killpg.assert_called_once_with(123, signal.SIGTERM)
+        popen.return_value.wait.assert_called_once_with(timeout=3)
         sleep.assert_not_called()
+
+    @mock.patch("tv.playback.os.killpg")
+    def test_stubborn_omxplayer_group_is_force_killed(self, killpg):
+        process = mock.Mock(pid=456)
+        process.wait.side_effect = [subprocess.TimeoutExpired("omxplayer", 3), 0]
+
+        OmxPlayerBackend()._stop_process_group(process)
+
+        self.assertEqual(
+            killpg.call_args_list,
+            [mock.call(456, signal.SIGTERM), mock.call(456, signal.SIGKILL)],
+        )
 
     def test_controller_uses_persisted_channel_and_saves_recent_id(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
