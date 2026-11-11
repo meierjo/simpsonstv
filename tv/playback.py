@@ -61,7 +61,9 @@ class PlaybackController:
             channel = self.channels[DEFAULT_CHANNEL_ID]
 
         episode = self.scheduler.choose_next(channel)
-        self.state_store.save(PlayerState(channel.channel_id, self.scheduler.recent_ids))
+        self.state_store.save(
+            PlayerState(channel.channel_id, self.scheduler.recent_ids, state.menu_open)
+        )
         print(
             "Playing %s - %s [%s]"
             % (episode.episode_id, episode.title, channel.name),
@@ -70,7 +72,8 @@ class PlaybackController:
         selected_channel_id = channel.channel_id
 
         def channel_changed():
-            return self.state_store.load().channel_id != selected_channel_id
+            latest_state = self.state_store.load()
+            return latest_state.menu_open or latest_state.channel_id != selected_channel_id
 
         return episode, self.backend.play(episode, should_stop=channel_changed)
 

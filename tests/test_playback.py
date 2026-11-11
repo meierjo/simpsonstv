@@ -110,6 +110,20 @@ class PlaybackTests(unittest.TestCase):
 
             self.assertEqual(loaded.channel_id, "treehouse-after-dark")
             self.assertEqual(loaded.recent_ids, ("S01E01", "S01E02"))
+            self.assertFalse(loaded.menu_open)
+
+    def test_menu_state_is_persisted_without_losing_channel(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            store = StateStore(Path(temporary_directory) / "state.json")
+            store.set_channel("treehouse-after-dark")
+
+            opened = store.set_menu_open(True)
+            closed = store.set_menu_open(False)
+
+            self.assertTrue(opened.menu_open)
+            self.assertEqual(opened.channel_id, "treehouse-after-dark")
+            self.assertFalse(closed.menu_open)
+            self.assertEqual(closed.channel_id, "treehouse-after-dark")
 
     def test_corrupt_state_falls_back_to_normal_tv(self):
         with tempfile.TemporaryDirectory() as temporary_directory:

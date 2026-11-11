@@ -14,6 +14,7 @@ DEFAULT_CHANNEL_ID = "springfield-tv"
 class PlayerState:
     channel_id: str = DEFAULT_CHANNEL_ID
     recent_ids: tuple = ()
+    menu_open: bool = False
 
 
 class StateStore:
@@ -30,9 +31,14 @@ class StateStore:
                 data = json.load(state_file)
             channel_id = data.get("channel", DEFAULT_CHANNEL_ID)
             recent_ids = data.get("recent", [])
-            if not isinstance(channel_id, str) or not isinstance(recent_ids, list):
+            menu_open = data.get("menu_open", False)
+            if (
+                not isinstance(channel_id, str)
+                or not isinstance(recent_ids, list)
+                or not isinstance(menu_open, bool)
+            ):
                 raise ValueError("invalid state values")
-            return PlayerState(channel_id, tuple(recent_ids))
+            return PlayerState(channel_id, tuple(recent_ids), menu_open)
         except (OSError, ValueError):
             # State is convenience, not media. A partial write or manual edit
             # must never keep the television off the air.
@@ -46,7 +52,11 @@ class StateStore:
         try:
             with os.fdopen(descriptor, "w") as temporary_file:
                 json.dump(
-                    {"channel": state.channel_id, "recent": list(state.recent_ids)},
+                    {
+                        "channel": state.channel_id,
+                        "menu_open": state.menu_open,
+                        "recent": list(state.recent_ids),
+                    },
                     temporary_file,
                     indent=2,
                     sort_keys=True,
@@ -64,7 +74,21 @@ class StateStore:
 
     def set_channel(self, channel_id):
         state = self.load()
-        updated = PlayerState(channel_id=channel_id, recent_ids=state.recent_ids)
+        updated = PlayerState(
+            channel_id=channel_id,
+            recent_ids=state.recent_ids,
+            menu_open=state.menu_open,
+        )
+        self.save(updated)
+        return updated
+
+    def set_menu_open(self, menu_open):
+        state = self.load()
+        updated = PlayerState(
+            channel_id=state.channel_id,
+            recent_ids=state.recent_ids,
+            menu_open=bool(menu_open),
+        )
         self.save(updated)
         return updated
 

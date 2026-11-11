@@ -3,7 +3,14 @@ import unittest
 from pathlib import Path
 
 from tv.state import StateStore
-from tv.touch import HoldDetector, ThreeFingerHoldDetector, toggle_treehouse_channel
+from tv.touch import (
+    HoldDetector,
+    MultiTouchTracker,
+    ThreeFingerHoldDetector,
+    TouchMapper,
+    toggle_treehouse_channel,
+)
+from tv.menu import channel_at
 
 
 class TouchTests(unittest.TestCase):
@@ -43,6 +50,30 @@ class TouchTests(unittest.TestCase):
 
             self.assertEqual(first, "treehouse-after-dark")
             self.assertEqual(second, "springfield-tv")
+
+    def test_portrait_touch_coordinates_rotate_to_landscape(self):
+        mapper = TouchMapper(0, 479, 0, 639, width=640, height=480, rotation=90)
+
+        self.assertEqual(mapper.map(479, 0), (0, 0))
+        self.assertEqual(mapper.map(0, 639), (639, 479))
+
+    def test_channel_cards_have_large_hit_areas(self):
+        self.assertEqual(channel_at((150, 200)), "springfield-tv")
+        self.assertEqual(channel_at((480, 200)), "treehouse-after-dark")
+        self.assertIsNone(channel_at((320, 450)))
+
+    def test_touch_tracker_retains_release_position(self):
+        tracker = MultiTouchTracker()
+        tracker.select_slot(0)
+        tracker.set_tracking_id(12)
+        tracker.set_x(100)
+        tracker.set_y(200)
+
+        tracker.set_tracking_id(-1)
+
+        self.assertEqual(tracker.active_count, 0)
+        self.assertEqual(tracker.take_released_position(), (100, 200))
+        self.assertIsNone(tracker.take_released_position())
 
 
 if __name__ == "__main__":

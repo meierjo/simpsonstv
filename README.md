@@ -91,16 +91,17 @@ systemd before restarting it.
 
 ### Touch prototype
 
-The first touch milestone uses a one-finger hold for two seconds to toggle
-between Springfield TV and Treehouse After Dark. The player notices the state
-change, ends the current video, and selects from the new channel immediately.
-This direct toggle is a prototype; the same gesture will open the visual
-channel overlay in the finished experience.
+Hold one finger on the screen for two seconds to open the full-screen channel
+menu. Playback pauses while the menu is visible. Release the opening touch,
+then tap a large channel card; playback resumes immediately in that mode. The
+menu closes without changing channels after ten seconds of inactivity.
 
 The listener uses the Linux `evdev` interface and the existing Goodix
-capacitive touchscreen. Install `python3-evdev`, then install and enable
-`systemd/tvtouch.service`. The service runs as `pi` with supplementary access
-to the `input` group; no new hardware or permanent user-group change is needed.
+capacitive touchscreen. Install `python3-evdev` and `python3-pygame`, then
+install and enable `systemd/tvtouch.service`. The service runs as `pi` with
+supplementary access to the `input` and `video` groups; no new hardware or
+permanent user-group change is needed. If the menu cannot initialize, the
+gesture safely falls back to the original direct channel toggle.
 
 ### Canonical filenames
 

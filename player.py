@@ -47,6 +47,9 @@ def main():
     )
     while True:
         try:
+            if state_store.load().menu_open:
+                time.sleep(0.1)
+                continue
             episode, return_code = controller.play_next()
             if return_code:
                 print(
