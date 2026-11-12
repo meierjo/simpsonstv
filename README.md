@@ -170,6 +170,33 @@ as a separate first-class preroll and play before the year's commercial.
 Commercial playback is fail-open: no media, no matching year, or an unplayable
 ad never prevents the selected episode from starting.
 
+### Commercials after the opening
+
+An episode with a verified cue in `config/break_cues.json` uses the more
+television-like sequence:
+
+```text
+episode opening → sponsor bumper/commercial → resume episode
+```
+
+Episodes without a cue retain the safe commercial-before-episode sequence. We
+do not apply one guessed timestamp to the entire library because opening and
+cold-open lengths vary. Add a cue after noting the desired timestamp:
+
+```bash
+python3 tools/set_break_cue.py S05E10 1:15
+```
+
+The cue accepts seconds, `mm:ss`, or `hh:mm:ss`. Remove a bad cue with:
+
+```bash
+python3 tools/set_break_cue.py S05E10 --remove
+```
+
+OMXPlayer stops the opening segment under controller supervision and resumes
+the same file with its documented `--pos` option. A channel change still stops
+the complete player process group at any point in the sequence.
+
 ### Black transitions between videos
 
 OMXPlayer briefly reveals the Linux console when one video closes and the next

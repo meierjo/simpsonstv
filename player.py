@@ -7,6 +7,7 @@ import sys
 import time
 
 from tv.catalog import scan_library
+from tv.breaks import load_break_cues
 from tv.channels import load_channels, load_episode_metadata
 from tv.commercials import CommercialScheduler, load_approved_clips, load_broadcast_years
 from tv.playback import OmxPlayerBackend, PlaybackController
@@ -57,6 +58,11 @@ def main():
     except ValueError as error:
         print("Broadcast years unavailable (%s); episodes only" % error, file=sys.stderr, flush=True)
         broadcast_years = {}
+    try:
+        break_cues = load_break_cues(REPOSITORY_ROOT / "config" / "break_cues.json")
+    except ValueError as error:
+        print("Break cues unavailable (%s); using preroll" % error, file=sys.stderr, flush=True)
+        break_cues = {}
     state_store = StateStore(REPOSITORY_ROOT / "runtime" / "state.json")
     initial_state = state_store.load()
     if initial_state.channel_id not in channels:
@@ -74,6 +80,7 @@ def main():
         commercial_scheduler=load_commercial_scheduler(),
         episode_metadata=metadata,
         broadcast_years=broadcast_years,
+        break_cues=break_cues,
     )
 
     print(

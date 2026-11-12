@@ -16,9 +16,11 @@ from tv.state import PlayerState, StateStore
 class FakeBackend:
     def __init__(self):
         self.played = []
+        self.options = []
 
-    def play(self, episode, should_stop=None):
+    def play(self, episode, should_stop=None, start_at=None, stop_after=None):
         self.played.append(episode)
+        self.options.append({"start_at": start_at, "stop_after": stop_after})
         return 0
 
 
@@ -33,8 +35,9 @@ class FakeCommercialScheduler:
 
 
 class FailingCommercialBackend(FakeBackend):
-    def play(self, item, should_stop=None):
+    def play(self, item, should_stop=None, start_at=None, stop_after=None):
         self.played.append(item)
+        self.options.append({"start_at": start_at, "stop_after": stop_after})
         return 1 if isinstance(item, CommercialClip) else 0
 
 
@@ -62,6 +65,41 @@ class PlaybackTests(unittest.TestCase):
             ["omxplayer", "--no-osd", "--aspect-mode", "fill", "S01E01.mp4"],
             start_new_session=True,
         )
+
+    @mock.patch("subprocess.Popen")
+    def test_omxplayer_resume_uses_documented_position(self, popen):
+        popen.return_value.poll.return_value = 0
+        popen.return_value.returncode = 0
+        episode = self.make_episode("S01E01")
+
+        OmxPlayerBackend().play(episode, start_at=75)
+
+        popen.assert_called_once_with(
+            [
+                "omxplayer",
+                "--no-osd",
+                "--aspect-mode",
+                "fill",
+                "--pos",
+                "00:01:15",
+                "S01E01.mp4",
+            ],
+            start_new_session=True,
+        )
+
+    @mock.patch("tv.playback.time.sleep")
+    @mock.patch("tv.playback.time.monotonic", side_effect=[10.0, 71.0])
+    @mock.patch("tv.playback.os.killpg")
+    @mock.patch("subprocess.Popen")
+    def test_omxplayer_stops_at_segment_cue(self, popen, killpg, monotonic, sleep):
+        popen.return_value.poll.return_value = None
+        popen.return_value.pid = 321
+
+        result = OmxPlayerBackend().play(self.make_episode("S01E01"), stop_after=60)
+
+        self.assertEqual(result, 0)
+        killpg.assert_called_once_with(321, signal.SIGTERM)
+        sleep.assert_not_called()
 
     @mock.patch("tv.playback.time.sleep")
     @mock.patch("tv.playback.os.killpg")
@@ -159,6 +197,35 @@ class PlaybackTests(unittest.TestCase):
 
             self.assertEqual((selected, result), (episode, 0))
             self.assertEqual(backend.played, [commercial, episode])
+
+    def test_verified_cue_plays_opening_then_ad_then_resumes_episode(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            store = StateStore(Path(temporary_directory) / "state.json")
+            episode = self.make_episode("S01E01")
+            commercial = CommercialClip(Path("1989-ad.mp4"), 1989)
+            backend = FakeBackend()
+            controller = PlaybackController(
+                channels={"springfield-tv": Channel("springfield-tv", "Normal", ())},
+                scheduler=EpisodeScheduler((episode,), {}),
+                state_store=store,
+                backend=backend,
+                commercial_scheduler=FakeCommercialScheduler((commercial,)),
+                broadcast_years={1: ((1, 1989), (13, 1990))},
+                break_cues={"episode_cues": {"S01E01": 75.0}},
+            )
+
+            selected, result = controller.play_next()
+
+            self.assertEqual((selected, result), (episode, 0))
+            self.assertEqual(backend.played, [episode, commercial, episode])
+            self.assertEqual(
+                backend.options,
+                [
+                    {"start_at": None, "stop_after": 75.0},
+                    {"start_at": None, "stop_after": None},
+                    {"start_at": 75.0, "stop_after": None},
+                ],
+            )
 
     def test_state_survives_round_trip_and_channel_change(self):
         with tempfile.TemporaryDirectory() as temporary_directory:

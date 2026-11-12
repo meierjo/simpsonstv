@@ -285,6 +285,8 @@ changes.
 
 - Produce final original channel cards, idents, standby, wake, and shutdown
   clips.
+- Curate post-opening commercial cue points; uncued episodes retain safe
+  preroll rather than using a guessed universal timestamp.
 - Tune transitions and perceived gap time on the actual Pi.
 - Add seasonal and character channels.
 - Add rare date-, sequence-, or probability-based Easter eggs.
