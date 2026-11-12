@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 
 from tools.import_commercial_reel import (
+    classify_clip,
     choose_segments,
     load_saved_source,
     parse_black_intervals,
@@ -58,6 +59,29 @@ class CommercialImportTests(unittest.TestCase):
             choose_segments(59.0, black), ((0.0, 29.5), (29.5, 59.0))
         )
 
+    def test_weak_ten_second_internal_cut_is_merged(self):
+        self.assertEqual(choose_segments(30.0, ((9.95, 10.05),)), ((0.0, 30.0),))
+
+    def test_strong_separator_preserves_short_bumper(self):
+        self.assertEqual(
+            choose_segments(30.0, ((9.6, 10.4),)),
+            ((0.0, 10.0), (10.0, 30.0)),
+        )
+
+    def test_confirmed_sponsor_bumper_override_is_applied(self):
+        overrides = {
+            "sources": {
+                "source": {
+                    "clips": {
+                        "001": {"kind": "sponsor-bumper", "approved": True}
+                    }
+                }
+            }
+        }
+        result = classify_clip(1, 10.0, "source", overrides)
+        self.assertEqual(result["kind"], "sponsor-bumper")
+        self.assertTrue(result["approved"])
+
     def test_saved_source_selection_is_one_based(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "sources.json"
@@ -73,7 +97,7 @@ class CommercialImportTests(unittest.TestCase):
             )
             self.assertEqual(load_saved_source(path, 1994, 2)["url"], "second")
 
-    def test_manifest_starts_unapproved(self):
+    def test_standard_commercial_starts_approved(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "manifest.json"
             write_manifest(
@@ -86,9 +110,15 @@ class CommercialImportTests(unittest.TestCase):
                 (Path(directory) / "1994" / "clip.mp4",),
             )
             payload = json.loads(path.read_text())
-            self.assertEqual(payload["status"], "needs-review")
-            self.assertFalse(payload["clips"][0]["approved"])
+            self.assertEqual(payload["status"], "approved")
+            self.assertTrue(payload["clips"][0]["approved"])
+            self.assertEqual(payload["clips"][0]["kind"], "commercial")
             self.assertEqual(payload["clips"][0]["file"], "1994/clip.mp4")
+
+    def test_long_candidate_requires_review(self):
+        result = classify_clip(1, 45.0, "source", {"sources": {}})
+        self.assertEqual(result["kind"], "long-form-candidate")
+        self.assertFalse(result["approved"])
 
     def test_safe_stem_is_shell_and_filename_friendly(self):
         self.assertEqual(safe_stem(Path("A Reel: 1994!?.mp4")), "a-reel-1994")

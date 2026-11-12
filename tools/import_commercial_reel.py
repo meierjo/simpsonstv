@@ -14,14 +14,15 @@ import sys
 
 REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_SOURCE_CATALOG = REPOSITORY_ROOT / "commercials" / "sources.json"
+DEFAULT_OVERRIDES = REPOSITORY_ROOT / "commercials" / "overrides.json"
 BLACK_INTERVAL_PATTERN = re.compile(
     r"black_start:(?P<start>\d+(?:\.\d+)?)\s+"
     r"black_end:(?P<end>\d+(?:\.\d+)?)"
 )
 TARGET_DURATIONS = (
-    (10.0, 0.0),
-    (15.0, 0.0),
-    (20.0, 0.0),
+    (10.0, 0.10),
+    (15.0, 0.04),
+    (20.0, 0.10),
     (30.0, 0.0),
     (45.0, 0.15),
     (60.0, 0.25),
@@ -77,6 +78,32 @@ def load_saved_source(path, year, source_number=1):
     return matches[source_number - 1]
 
 
+def load_overrides(path=DEFAULT_OVERRIDES):
+    path = Path(path)
+    if not path.is_file():
+        return {"sources": {}}
+    with path.open() as override_file:
+        data = json.load(override_file)
+    if not isinstance(data.get("sources", {}), dict):
+        raise ValueError("Commercial overrides must contain a sources object")
+    return data
+
+
+def infer_saved_source(path, year, catalog_path=DEFAULT_SOURCE_CATALOG):
+    """Match a downloaded filename containing a YouTube/Dailymotion ID."""
+    with Path(catalog_path).open() as source_file:
+        sources = json.load(source_file).get("sources", [])
+    filename = Path(path).name.lower()
+    for source in sources:
+        if source.get("year") != year:
+            continue
+        url = source.get("url", "")
+        identifier = url.split("v=")[-1].split("&")[0] if "v=" in url else url.rstrip("/").split("/")[-1]
+        if identifier and identifier.lower() in filename:
+            return source
+    return None
+
+
 def parse_black_intervals(output):
     return tuple(
         (float(match.group("start")), float(match.group("end")))
@@ -98,7 +125,14 @@ def choose_segments(
         raise ValueError("Invalid commercial duration range")
 
     boundaries = [0.0]
-    boundaries.extend((start + end) / 2.0 for start, end in black_intervals)
+    boundary_penalties = {0.0: 0.0, round(float(duration), 3): 0.0}
+    for start, end in black_intervals:
+        midpoint = round((start + end) / 2.0, 3)
+        boundaries.append(midpoint)
+        penalty = cut_penalty(start, end)
+        boundary_penalties[midpoint] = min(
+            penalty, boundary_penalties.get(midpoint, penalty)
+        )
     boundaries.append(float(duration))
     boundaries = sorted(set(round(point, 3) for point in boundaries))
 
@@ -110,7 +144,7 @@ def choose_segments(
     for index, boundary in enumerate(boundaries[1:], 1):
         if boundary > minimum:
             break
-        best[index] = (0.0, [])
+        best[index] = (-0.25, [])
     last_index = len(boundaries) - 1
     for end_index in range(1, len(boundaries)):
         for start_index in range(end_index):
@@ -126,6 +160,8 @@ def choose_segments(
                 (abs(segment_duration - target) / 5.0) ** 2 + penalty
                 for target, penalty in TARGET_DURATIONS
             ) + segment_penalty
+            if end_index != last_index:
+                cost += boundary_penalties.get(boundaries[end_index], 0.35)
             if segment_duration < minimum:
                 cost += 25.0
             previous_cost, previous_segments = best[start_index]
@@ -152,6 +188,23 @@ def choose_segments(
         )
     selected = min(endings, key=lambda candidate: (candidate[0], -len(candidate[1])))
     return tuple(selected[1])
+
+
+def cut_penalty(start, end):
+    """Prefer strong black separators and resist weak/internal hard cuts."""
+    black_duration = end - start
+    if black_duration >= 0.45:
+        return -0.25
+    if black_duration >= 0.25:
+        return -0.12
+    if black_duration >= 0.15:
+        return 0.05
+    if black_duration > 0:
+        return 0.30
+    # A hard cut is neutral: duration scoring may use it to separate two
+    # standard 30-second ads, but it receives no reward that would encourage
+    # cutting a single ad at every internal scene change.
+    return 0.0
 
 
 def parse_duration(output):
@@ -305,37 +358,73 @@ def safe_stem(path):
     return cleaned[:60] or "commercial-reel"
 
 
-def write_manifest(path, output_root, year, source_path, source_url, segments, clips):
+def classify_clip(number, duration, source_url, overrides):
+    if duration < 8.0 or duration > 65.0:
+        classification = {"kind": "suspected-fragment", "approved": False}
+    elif duration <= 12.5:
+        classification = {"kind": "short-form-candidate", "approved": False}
+    elif duration <= 35.0:
+        classification = {"kind": "commercial", "approved": True}
+    else:
+        classification = {"kind": "long-form-candidate", "approved": False}
+    source_overrides = overrides.get("sources", {}).get(source_url or "", {})
+    clip_override = source_overrides.get("clips", {}).get("%03d" % number, {})
+    classification.update(clip_override)
+    return classification
+
+
+def write_manifest(
+    path, output_root, year, source_path, source_url, segments, clips, overrides=None
+):
+    overrides = overrides or {"sources": {}}
+    clip_records = []
+    for number, ((start, end), clip) in enumerate(zip(segments, clips), 1):
+        record = {
+            "sequence": number,
+            "file": str(clip.relative_to(output_root)),
+            "start": round(start, 3),
+            "end": round(end, 3),
+            "duration": round(end - start, 3),
+        }
+        record.update(classify_clip(number, end - start, source_url, overrides))
+        clip_records.append(record)
     payload = {
         "year": year,
         "source_file": str(source_path),
         "source_url": source_url,
-        "status": "needs-review",
-        "clips": [
-            {
-                "file": str(clip.relative_to(output_root)),
-                "start": round(start, 3),
-                "end": round(end, 3),
-                "duration": round(end - start, 3),
-                "approved": False,
-            }
-            for (start, end), clip in zip(segments, clips)
-        ],
+        "status": (
+            "approved" if all(clip["approved"] for clip in clip_records) else "needs-review"
+        ),
+        "clips": clip_records,
     }
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+    return payload
 
 
-def write_review_page(path, year, manifest_path, clips, segments):
+def write_review_page(path, year, manifest_path, clips, segments, clip_records=None):
+    clip_records = clip_records or [{} for _ in clips]
     cards = []
-    for number, (clip, (start, end)) in enumerate(zip(clips, segments), 1):
+    for number, (clip, (start, end), record) in enumerate(
+        zip(clips, segments, clip_records), 1
+    ):
         relative_clip = Path(os.path.relpath(clip, path.parent))
+        kind = record.get("kind", "unknown")
+        checked = " checked" if record.get("approved") else ""
         cards.append(
             "<article><h2>Clip %03d</h2>"
             "<video controls preload='metadata' src='%s'></video>"
-            "<p>%.1f–%.1f seconds · %.1f seconds</p>"
-            "<label><input type='checkbox'> Keep</label></article>"
-            % (number, html.escape(str(relative_clip)), start, end, end - start)
+            "<p><strong>%s</strong><br>%.1f–%.1f seconds · %.1f seconds</p>"
+            "<label><input type='checkbox'%s> Keep</label></article>"
+            % (
+                number,
+                html.escape(str(relative_clip)),
+                html.escape(kind),
+                start,
+                end,
+                end - start,
+                checked,
+            )
         )
     document = """<!doctype html>
 <html><head><meta charset="utf-8"><title>%s commercial review</title>
@@ -390,6 +479,10 @@ def run(args):
         source_path = args.input.expanduser().resolve()
         if not source_path.is_file():
             raise ValueError("Input reel does not exist: %s" % source_path)
+        if source_url is None:
+            inferred_source = infer_saved_source(source_path, args.year)
+            if inferred_source is not None:
+                source_url = inferred_source.get("url")
     else:
         source_path = download_reel(source_url, output_root / "incoming")
 
@@ -410,7 +503,7 @@ def run(args):
             combined_intervals,
             args.min_seconds,
             args.max_seconds,
-            segment_penalty=0.22,
+            segment_penalty=0.24,
         )
     stem = safe_stem(source_path)
     clip_directory = output_root / str(args.year) / stem
@@ -438,7 +531,7 @@ def run(args):
     manifest_directory = output_root / "manifests"
     manifest_path = manifest_directory / ("%d-%s.json" % (args.year, stem))
     review_path = manifest_directory / ("%d-%s-review.html" % (args.year, stem))
-    write_manifest(
+    manifest = write_manifest(
         manifest_path,
         output_root,
         args.year,
@@ -446,8 +539,11 @@ def run(args):
         source_url,
         segments,
         clips,
+        load_overrides(),
     )
-    write_review_page(review_path, args.year, manifest_path, clips, segments)
+    write_review_page(
+        review_path, args.year, manifest_path, clips, segments, manifest["clips"]
+    )
     review_index = write_review_index(manifest_directory)
     print("Manifest: %s" % manifest_path)
     print("Review page: %s" % review_path)

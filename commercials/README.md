@@ -52,9 +52,13 @@ python3 tools/import_commercial_reel.py \
 ```
 
 URL imports require `yt-dlp` and `ffmpeg` on the computer doing the
-import. Detection is intentionally conservative and every generated clip
-starts with `approved: false` in its JSON manifest. Watch the generated review
-page before approving or transferring clips to the TV.
+import. Detection is intentionally conservative. Watch the generated review
+page before transferring clips to the TV.
+
+Standard 13-35 second clips are now auto-classified as approved commercials.
+Short clips are retained as possible sponsor bumpers, while clips longer than
+35 seconds and unusual fragments remain unapproved for focused review. Tracked
+overrides preserve confirmed examples such as the 1989 Simpsons sponsor bumper.
 
 Download availability does not establish permission to redistribute a
 commercial. Keep source, year, and rights notes for every clip. Do not include

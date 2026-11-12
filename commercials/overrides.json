@@ -1,0 +1,13 @@
+{
+  "sources": {
+    "https://www.youtube.com/watch?v=a1czeKjcRuk": {
+      "clips": {
+        "001": {
+          "approved": true,
+          "kind": "sponsor-bumper",
+          "notes": "The Simpsons is brought to you by sponsor bumper; confirmed by review."
+        }
+      }
+    }
+  }
+}
