@@ -197,6 +197,38 @@ OMXPlayer stops the opening segment under controller supervision and resumes
 the same file with its documented `--pos` option. A channel change still stops
 the complete player process group at any point in the sequence.
 
+#### Detecting and reviewing intro cues
+
+Run detection on the Mac, not the Pi. It requires FFmpeg and Chromaprint's
+`fpcalc`; Homebrew installs the latter with `brew install chromaprint`.
+
+Analyze one season at a time. The tool reads embedded chapter markers, compares
+Chromaprint audio across peer episodes, caches fingerprints, and makes paired
+five-second previews without modifying the episode files:
+
+```bash
+python3 tools/analyze_intros.py /path/to/encoded --season 5
+```
+
+Review every proposed cut in the private localhost UI:
+
+```bash
+python3 tools/review_intro_cues.py \
+  analysis/intros/season-05-candidates.json
+```
+
+Compare **Before cut** with **After resume**, adjust the timestamp if needed,
+check **Approved**, and save. Generated fingerprints and previews stay under
+the ignored `analysis/intros/` directory.
+
+Export only approved cues into the player configuration:
+
+```bash
+python3 tools/review_intro_cues.py \
+  analysis/intros/season-05-candidates.json \
+  --export config/break_cues.json
+```
+
 ### Black transitions between videos
 
 OMXPlayer briefly reveals the Linux console when one video closes and the next

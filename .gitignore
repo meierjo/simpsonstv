@@ -3,6 +3,7 @@
 __pycache__/
 *.py[cod]
 runtime/
+analysis/intros/
 
 # The video library is local media, not project source.
 videos/link_to_vids
