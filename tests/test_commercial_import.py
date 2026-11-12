@@ -8,6 +8,7 @@ from tools.import_commercial_reel import (
     load_saved_source,
     parse_black_intervals,
     parse_duration,
+    parse_scene_points,
     safe_stem,
     write_manifest,
 )
@@ -26,6 +27,10 @@ class CommercialImportTests(unittest.TestCase):
         self.assertEqual(
             parse_black_intervals(output), ((14.8, 15.2), (44.9, 45.1))
         )
+
+    def test_scene_cut_timestamps_are_parsed(self):
+        output = "n:1 pts:100 pts_time:3.25 pos:0\nn:2 pts_time:33.50 pos:1"
+        self.assertEqual(parse_scene_points(output), (3.25, 33.5))
 
     def test_segment_planner_prefers_normal_ad_lengths(self):
         black = ((14.8, 15.2), (29.8, 30.2), (59.8, 60.2))

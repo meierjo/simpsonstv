@@ -29,6 +29,7 @@ TARGET_DURATIONS = (
 DURATION_PATTERN = re.compile(
     r"Duration:\s*(?P<hours>\d+):(?P<minutes>\d+):(?P<seconds>\d+(?:\.\d+)?)"
 )
+SCENE_TIME_PATTERN = re.compile(r"pts_time:(?P<time>\d+(?:\.\d+)?)")
 
 
 def parse_arguments(argv=None):
@@ -83,7 +84,13 @@ def parse_black_intervals(output):
     )
 
 
-def choose_segments(duration, black_intervals, minimum=8.0, maximum=75.0):
+def parse_scene_points(output):
+    return tuple(float(match.group("time")) for match in SCENE_TIME_PATTERN.finditer(output))
+
+
+def choose_segments(
+    duration, black_intervals, minimum=8.0, maximum=75.0, segment_penalty=0.0
+):
     """Choose plausible ad segments using black-screen midpoints as cut points."""
     if duration <= 0:
         raise ValueError("Reel duration must be positive")
@@ -118,7 +125,7 @@ def choose_segments(duration, black_intervals, minimum=8.0, maximum=75.0):
             cost = min(
                 (abs(segment_duration - target) / 5.0) ** 2 + penalty
                 for target, penalty in TARGET_DURATIONS
-            )
+            ) + segment_penalty
             if segment_duration < minimum:
                 cost += 25.0
             previous_cost, previous_segments = best[start_index]
@@ -193,6 +200,30 @@ def detect_black_intervals(path):
     if result.returncode:
         raise RuntimeError("FFmpeg analysis failed:\n%s" % result.stderr[-2000:])
     return parse_black_intervals(result.stderr)
+
+
+def detect_scene_points(path):
+    """Return only very strong hard cuts for reels without black separators."""
+    result = subprocess.run(
+        [
+            "ffmpeg",
+            "-hide_banner",
+            "-i",
+            str(path),
+            "-vf",
+            "select='gt(scene,0.60)',showinfo",
+            "-an",
+            "-f",
+            "null",
+            "-",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode:
+        raise RuntimeError("FFmpeg scene analysis failed:\n%s" % result.stderr[-2000:])
+    return parse_scene_points(result.stderr)
 
 
 def download_reel(url, incoming_directory):
@@ -346,9 +377,23 @@ def run(args):
 
     duration = probe_duration(source_path)
     black_intervals = detect_black_intervals(source_path)
-    segments = choose_segments(
-        duration, black_intervals, args.min_seconds, args.max_seconds
-    )
+    scene_points = ()
+    try:
+        segments = choose_segments(
+            duration, black_intervals, args.min_seconds, args.max_seconds
+        )
+    except ValueError:
+        scene_points = detect_scene_points(source_path)
+        combined_intervals = tuple(black_intervals) + tuple(
+            (point, point) for point in scene_points
+        )
+        segments = choose_segments(
+            duration,
+            combined_intervals,
+            args.min_seconds,
+            args.max_seconds,
+            segment_penalty=0.22,
+        )
     stem = safe_stem(source_path)
     clip_directory = output_root / str(args.year) / stem
     clips = tuple(
@@ -357,8 +402,12 @@ def run(args):
     )
 
     print(
-        "Detected %d black transition(s); planned %d candidate clip(s)."
-        % (len(black_intervals), len(segments))
+        "Detected %d black transition(s)%s; planned %d candidate clip(s)."
+        % (
+            len(black_intervals),
+            " plus %d strong scene cut(s)" % len(scene_points) if scene_points else "",
+            len(segments),
+        )
     )
     for number, (start, end) in enumerate(segments, 1):
         print("%03d  %8.3f - %8.3f  (%5.1fs)" % (number, start, end, end - start))
