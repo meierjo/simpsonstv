@@ -25,6 +25,47 @@ cards unless permission allows it.
   - The uploader explicitly says they do not own the material; rights are
     unclear, so do not treat archive availability as a reuse license.
 
+## Curated Simpsons-timeslot reels
+
+During 1989-1999 the Twin Cities Fox affiliate carrying first-run Simpsons was
+channel 29: KITN, renamed WFTC in 1994. Complete KITN/WFTC Simpsons breaks are
+not publicly indexed for every year, so this list uses authentic commercial
+breaks recorded during The Simpsons on other Fox affiliates as the national
+reference. Source-city local ads should not be labeled as Twin Cities ads.
+
+- 1989 - series premiere, December 17:
+  <https://www.youtube.com/watch?v=a1czeKjcRuk>
+- 1990 - The Simpsons, March 18:
+  <https://www.youtube.com/watch?v=dzIbmplYWOE>
+- 1991 - Treehouse of Horror II, October 31:
+  <https://www.youtube.com/watch?v=d1xnBCPTUQo>
+- 1992 - commercials from The Simpsons, June 25:
+  <https://www.dailymotion.com/video/x4zft2f>
+- 1993 - Halloween Scare-A-Thon / Treehouse of Horror IV:
+  <https://www.youtube.com/watch?v=ItHy8egHcaQ>
+- 1994 - Simpsons commercial break, September 18:
+  <https://www.youtube.com/watch?v=rrs0nzFkMgA>
+- 1995 - Who Shot Mr. Burns? Part Two premiere:
+  <https://www.youtube.com/watch?v=TgdX7tnHzFM>
+- 1996 - Fox breaks during The Simpsons, November 17:
+  <https://www.youtube.com/watch?v=jQXRnNj6lJA>
+- 1997 - The Cartridge Family original broadcast:
+  <https://www.youtube.com/watch?v=qw22EcIAhK8>
+- 1998 - The Trouble with Trillions original broadcast:
+  <https://www.youtube.com/watch?v=uwxz5MLR73E>
+- 1999 - Take My Wife, Sleaze original broadcast:
+  <https://www.dailymotion.com/video/x6l58nk>
+
+### Confirmed Twin Cities station material
+
+- 1992 KITN Minneapolis-Saint Paul commercial reel:
+  <https://www.youtube.com/watch?v=MKivHV-Wwq4>
+- 1994 KITN Twin Cities commercial breaks:
+  <https://www.youtube.com/watch?v=UOJoS_VK0cc>
+
+The same records are stored in `commercials/sources.json` for the planned
+automatic download, splitting, provenance, and conversion workflow.
+
 ## Year indexes
 
 - 1989: <https://dailytvcalendar.com/1989/commercials>
