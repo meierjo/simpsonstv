@@ -18,7 +18,14 @@ BLACK_INTERVAL_PATTERN = re.compile(
     r"black_start:(?P<start>\d+(?:\.\d+)?)\s+"
     r"black_end:(?P<end>\d+(?:\.\d+)?)"
 )
-TARGET_DURATIONS = (10.0, 15.0, 20.0, 30.0, 45.0, 60.0)
+TARGET_DURATIONS = (
+    (10.0, 0.0),
+    (15.0, 0.0),
+    (20.0, 0.0),
+    (30.0, 0.0),
+    (45.0, 0.15),
+    (60.0, 0.25),
+)
 DURATION_PATTERN = re.compile(
     r"Duration:\s*(?P<hours>\d+):(?P<minutes>\d+):(?P<seconds>\d+(?:\.\d+)?)"
 )
@@ -91,6 +98,12 @@ def choose_segments(duration, black_intervals, minimum=8.0, maximum=75.0):
     # Dynamic programming avoids splitting on every internal black frame. The
     # preferred path uses intervals near common 10/15/20/30/45/60-second ads.
     best = {0: (0.0, [])}
+    # Discard a short slate, station bumper, or partial ad before the first
+    # detected boundary instead of gluing it onto the first real commercial.
+    for index, boundary in enumerate(boundaries[1:], 1):
+        if boundary > minimum:
+            break
+        best[index] = (0.0, [])
     last_index = len(boundaries) - 1
     for end_index in range(1, len(boundaries)):
         for start_index in range(end_index):
@@ -102,8 +115,10 @@ def choose_segments(duration, black_intervals, minimum=8.0, maximum=75.0):
                 continue
             if segment_duration < minimum and not edge_fragment:
                 continue
-            distance = min(abs(segment_duration - target) for target in TARGET_DURATIONS)
-            cost = (distance / 5.0) ** 2
+            cost = min(
+                (abs(segment_duration - target) / 5.0) ** 2 + penalty
+                for target, penalty in TARGET_DURATIONS
+            )
             if segment_duration < minimum:
                 cost += 25.0
             previous_cost, previous_segments = best[start_index]
@@ -119,11 +134,17 @@ def choose_segments(duration, black_intervals, minimum=8.0, maximum=75.0):
             ):
                 best[end_index] = candidate
 
-    if last_index not in best:
+    endings = []
+    for index, candidate in best.items():
+        trailing_fragment = duration - boundaries[index]
+        if index == last_index or trailing_fragment <= minimum:
+            endings.append(candidate)
+    if not endings:
         raise ValueError(
             "No plausible cuts found. Try a larger --max-seconds value or split the reel first."
         )
-    return tuple(best[last_index][1])
+    selected = min(endings, key=lambda candidate: (candidate[0], -len(candidate[1])))
+    return tuple(selected[1])
 
 
 def parse_duration(output):
@@ -155,7 +176,11 @@ def detect_black_intervals(path):
             "-i",
             str(path),
             "-vf",
-            "blackdetect=d=0.20:pix_th=0.10",
+            # VHS captures often have only three or four near-black frames
+            # between spots. A short duration and slightly tolerant pixel
+            # threshold catches those without forcing every detection to be a
+            # cut; choose_segments still rejects implausibly tiny fragments.
+            "blackdetect=d=0.10:pix_th=0.15",
             "-an",
             "-f",
             "null",

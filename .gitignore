@@ -18,4 +18,5 @@ commercials/**/*.mkv
 commercials/**/*.mov
 commercials/**/*.avi
 commercials/incoming/
+commercials/manifests/*.json
 commercials/manifests/*-review.html

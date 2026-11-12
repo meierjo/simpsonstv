@@ -40,6 +40,18 @@ class CommercialImportTests(unittest.TestCase):
         self.assertNotIn((0.0, 5.0), segments)
         self.assertEqual(segments[-1], (30.0, 45.0))
 
+    def test_short_leading_slate_is_discarded(self):
+        black = ((3.8, 4.2), (13.8, 14.2), (43.8, 44.2))
+        self.assertEqual(
+            choose_segments(44.0, black), ((4.0, 14.0), (14.0, 44.0))
+        )
+
+    def test_two_supported_thirty_second_ads_beat_one_sixty(self):
+        black = ((29.3, 29.7),)
+        self.assertEqual(
+            choose_segments(59.0, black), ((0.0, 29.5), (29.5, 59.0))
+        )
+
     def test_saved_source_selection_is_one_based(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "sources.json"
