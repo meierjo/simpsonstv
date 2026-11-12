@@ -6,6 +6,11 @@ import json
 from pathlib import Path
 import sys
 
+try:
+    from tools.review_commercials import reset_conservative
+except ImportError:  # Direct execution adds tools/, rather than the repo, to sys.path.
+    from review_commercials import reset_conservative
+
 
 def approve_manifests(root):
     manifest_directory = Path(root).expanduser().resolve() / "manifests"
@@ -32,20 +37,27 @@ def main(argv=None):
         description="Approve every clip after visually reviewing an importer output root."
     )
     parser.add_argument("root", type=Path, help="import root, such as commercials/v2")
-    parser.add_argument(
+    actions = parser.add_mutually_exclusive_group(required=True)
+    actions.add_argument(
         "--confirm-reviewed",
         action="store_true",
-        help="required acknowledgement that every generated clip was reviewed",
+        help="approve every clip after reviewing every generated clip",
+    )
+    actions.add_argument(
+        "--reset-conservative",
+        action="store_true",
+        help="keep only normal commercials and confirmed sponsor bumpers",
     )
     args = parser.parse_args(argv)
-    if not args.confirm_reviewed:
-        parser.error("--confirm-reviewed is required")
     try:
-        manifests, clips = approve_manifests(args.root)
+        if args.reset_conservative:
+            manifests, clips = reset_conservative(args.root)
+        else:
+            manifests, clips = approve_manifests(args.root)
     except (OSError, ValueError) as error:
         print("Could not approve commercials: %s" % error, file=sys.stderr)
         return 1
-    print("Approved %d clips across %d manifests." % (clips, manifests))
+    print("Kept %d clips across %d manifests." % (clips, manifests))
     return 0
 
 

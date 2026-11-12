@@ -64,8 +64,20 @@ After watching every clip in a generated review index, record that approval in
 the manifests so the TV is allowed to play them:
 
 ```bash
-python3 tools/approve_commercials.py commercials/v2 --confirm-reviewed
+python3 tools/review_commercials.py commercials/v2
 ```
+
+This opens a private browser UI on `127.0.0.1`. Its Keep checkboxes save
+directly into each manifest when you press **Save this year**. Press `Ctrl+C`
+in Terminal when finished. To return to a cautious baseline that keeps only
+normal-length commercials and confirmed sponsor bumpers:
+
+```bash
+python3 tools/approve_commercials.py commercials/v2 --reset-conservative
+```
+
+`--confirm-reviewed` remains available when every candidate really should be
+enabled, but it is deliberately broader than the normal review workflow.
 
 The player reads only approved clips whose files still exist. By default it
 selects one exact-year commercial before each episode, avoids recent repeats,

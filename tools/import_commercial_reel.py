@@ -433,9 +433,10 @@ main{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1
 article{background:#292545;padding:1rem;border-radius:12px}video{width:100%%}
 small{color:#c9c3e8}</style></head><body>
 <h1>%s commercial candidates</h1>
-<p><small>Review the clips, then update approved flags in %s. Checkboxes are a
-temporary visual aid and do not modify files.</small></p><main>%s</main></body></html>
-""" % (year, year, html.escape(manifest_path.name), "".join(cards))
+<p><small>For saved Keep choices, run <code>python3 tools/review_commercials.py
+commercials/v2</code>. These standalone checkboxes are only a quick preview.</small></p>
+<main>%s</main></body></html>
+""" % (year, year, "".join(cards))
     path.write_text(document)
 
 
