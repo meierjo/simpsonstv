@@ -271,13 +271,15 @@ impractical, and a three-second on-screen hold produces a clean shutdown.
 
 ### Phase 5 - Commercial television
 
-- Define and validate the commercial-library manifest.
-- Select commercials by episode broadcast year.
-- Add duration limits, recent-ad avoidance, and an off switch.
-- Test missing years and damaged files.
+- [x] Define and validate the commercial-library manifest.
+- [x] Select commercials by episode broadcast year.
+- [x] Add review approval, recent-ad avoidance, and an off switch.
+- [x] Test missing years and absent files.
 
-**Done when:** a legal local commercial collection can be added without code
-changes and the TV remains functional when it is removed.
+**Result:** approved exact-year commercials and sponsor bumpers are optional
+preroll. The TV remains functional when the collection is missing or a clip
+fails, and `config/commercials.json` can disable the feature without code
+changes.
 
 ### Phase 6 - Broadcast polish
 

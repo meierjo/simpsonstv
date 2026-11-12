@@ -160,12 +160,21 @@ Future encoding runs produce canonical names automatically. A title in
 in the source filename is normalized. Tags for secret channels stay in the
 metadata rather than being embedded in filenames.
 
+## Commercial television
+
+Reviewed local commercials can play immediately before each episode using the
+episode's actual original broadcast year. See `commercials/README.md` for the
+review, approval, transfer, and disable commands. Sponsor bumpers are treated
+as a separate first-class preroll and play before the year's commercial.
+
+Commercial playback is fail-open: no media, no matching year, or an unplayable
+ad never prevents the selected episode from starting.
+
 ## Planned extensions
 
 - Episode catalog validation and metadata
 - Normal, Halloween, holiday, and character-focused playback modes
 - Recently-played avoidance
-- Period-correct commercials selected by original broadcast year
 - Secret touchscreen channel controls
 - Custom retail-box artwork and print-ready packaging
 

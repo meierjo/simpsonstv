@@ -7,6 +7,7 @@ import subprocess
 
 from tv.catalog import Episode
 from tv.channels import Channel
+from tv.commercials import CommercialClip
 from tv.playback import OmxPlayerBackend, PlaybackController
 from tv.scheduler import EpisodeScheduler
 from tv.state import PlayerState, StateStore
@@ -19,6 +20,22 @@ class FakeBackend:
     def play(self, episode, should_stop=None):
         self.played.append(episode)
         return 0
+
+
+class FakeCommercialScheduler:
+    def __init__(self, clips):
+        self.clips = clips
+        self.requested_years = []
+
+    def choose_preroll(self, year):
+        self.requested_years.append(year)
+        return self.clips
+
+
+class FailingCommercialBackend(FakeBackend):
+    def play(self, item, should_stop=None):
+        self.played.append(item)
+        return 1 if isinstance(item, CommercialClip) else 0
 
 
 class PlaybackTests(unittest.TestCase):
@@ -98,6 +115,50 @@ class PlaybackTests(unittest.TestCase):
             self.assertEqual(selected, episode)
             self.assertEqual(backend.played, [episode])
             self.assertEqual(store.load().recent_ids, ("S01E01",))
+
+    def test_controller_plays_period_preroll_before_episode(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            store = StateStore(Path(temporary_directory) / "state.json")
+            episode = self.make_episode("S01E01")
+            scheduler = EpisodeScheduler((episode,), {})
+            commercial = CommercialClip(Path("1989-ad.mp4"), 1989)
+            commercial_scheduler = FakeCommercialScheduler((commercial,))
+            backend = FakeBackend()
+            controller = PlaybackController(
+                channels={"springfield-tv": Channel("springfield-tv", "Normal", ())},
+                scheduler=scheduler,
+                state_store=store,
+                backend=backend,
+                commercial_scheduler=commercial_scheduler,
+                broadcast_years={1: ((1, 1989), (13, 1990))},
+            )
+
+            selected, result = controller.play_next()
+
+            self.assertEqual(result, 0)
+            self.assertEqual(selected, episode)
+            self.assertEqual(commercial_scheduler.requested_years, [1989])
+            self.assertEqual(backend.played, [commercial, episode])
+
+    def test_failed_commercial_does_not_prevent_episode(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            store = StateStore(Path(temporary_directory) / "state.json")
+            episode = self.make_episode("S01E01")
+            commercial = CommercialClip(Path("broken.mp4"), 1989)
+            backend = FailingCommercialBackend()
+            controller = PlaybackController(
+                channels={"springfield-tv": Channel("springfield-tv", "Normal", ())},
+                scheduler=EpisodeScheduler((episode,), {}),
+                state_store=store,
+                backend=backend,
+                commercial_scheduler=FakeCommercialScheduler((commercial,)),
+                broadcast_years={1: ((1, 1989), (13, 1990))},
+            )
+
+            selected, result = controller.play_next()
+
+            self.assertEqual((selected, result), (episode, 0))
+            self.assertEqual(backend.played, [commercial, episode])
 
     def test_state_survives_round_trip_and_channel_change(self):
         with tempfile.TemporaryDirectory() as temporary_directory:

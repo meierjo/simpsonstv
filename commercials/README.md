@@ -60,6 +60,25 @@ Short clips are retained as possible sponsor bumpers, while clips longer than
 35 seconds and unusual fragments remain unapproved for focused review. Tracked
 overrides preserve confirmed examples such as the 1989 Simpsons sponsor bumper.
 
+After watching every clip in a generated review index, record that approval in
+the manifests so the TV is allowed to play them:
+
+```bash
+python3 tools/approve_commercials.py commercials/v2 --confirm-reviewed
+```
+
+The player reads only approved clips whose files still exist. By default it
+selects one exact-year commercial before each episode, avoids recent repeats,
+and adds an approved sponsor bumper first when that year has one. Copy the
+complete directory—including `manifests/`—to the Pi:
+
+```bash
+rsync -av --progress commercials/v2/ pi@simpsonstv.local:~/simpsonstv/commercials/v2/
+```
+
+Set `enabled` to `false` in `config/commercials.json` to return to episode-only
+playback. A missing or damaged commercial library also falls back to episodes.
+
 Download availability does not establish permission to redistribute a
 commercial. Keep source, year, and rights notes for every clip. Do not include
 commercial media in cloned cards or public releases unless its license or
