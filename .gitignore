@@ -20,3 +20,4 @@ commercials/**/*.avi
 commercials/incoming/
 commercials/manifests/*.json
 commercials/manifests/*-review.html
+commercials/manifests/index.html

@@ -350,6 +350,24 @@ temporary visual aid and do not modify files.</small></p><main>%s</main></body><
     path.write_text(document)
 
 
+def write_review_index(directory):
+    pages = sorted(Path(directory).glob("*-review.html"))
+    links = "".join(
+        "<li><a href='%s'>%s</a></li>"
+        % (html.escape(page.name), html.escape(page.stem.replace("-review", "")))
+        for page in pages
+    )
+    document = """<!doctype html><html><head><meta charset="utf-8">
+<title>Commercial import reviews</title>
+<style>body{font:18px system-ui;background:#171527;color:#fff;max-width:900px;
+margin:3rem auto;padding:0 1rem}a{color:#ffd54a}li{margin:.8rem 0}</style>
+</head><body><h1>Commercial import reviews</h1><ol>%s</ol></body></html>
+""" % links
+    index_path = Path(directory) / "index.html"
+    index_path.write_text(document)
+    return index_path
+
+
 def require_programs(programs):
     missing = [program for program in programs if shutil.which(program) is None]
     if missing:
@@ -430,8 +448,10 @@ def run(args):
         clips,
     )
     write_review_page(review_path, args.year, manifest_path, clips, segments)
+    review_index = write_review_index(manifest_directory)
     print("Manifest: %s" % manifest_path)
     print("Review page: %s" % review_path)
+    print("Review index: %s" % review_index)
     return 0
 
 

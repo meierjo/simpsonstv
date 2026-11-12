@@ -11,6 +11,7 @@ from tools.import_commercial_reel import (
     parse_scene_points,
     safe_stem,
     write_manifest,
+    write_review_index,
 )
 
 
@@ -91,6 +92,16 @@ class CommercialImportTests(unittest.TestCase):
 
     def test_safe_stem_is_shell_and_filename_friendly(self):
         self.assertEqual(safe_stem(Path("A Reel: 1994!?.mp4")), "a-reel-1994")
+
+    def test_review_index_links_generated_year_pages(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "1990-first-review.html").touch()
+            (root / "1991-second-review.html").touch()
+            index = write_review_index(root)
+            content = index.read_text()
+            self.assertIn("1990-first-review.html", content)
+            self.assertIn("1991-second-review.html", content)
 
 
 if __name__ == "__main__":
