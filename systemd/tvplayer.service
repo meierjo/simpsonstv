@@ -1,6 +1,6 @@
 [Unit]
 Description=Simpsons TV player
-After=local-fs.target
+After=local-fs.target tvconsole.service
 
 [Service]
 User=pi

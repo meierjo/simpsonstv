@@ -1,0 +1,16 @@
+[Unit]
+Description=Keep the Simpsons TV console black behind video playback
+After=local-fs.target
+Before=tvplayer.service
+
+[Service]
+Type=oneshot
+Environment=TERM=linux
+StandardInput=tty
+StandardOutput=tty
+TTYPath=/dev/tty1
+ExecStart=/usr/bin/setterm --term linux --cursor off --clear all
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

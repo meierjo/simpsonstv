@@ -170,6 +170,30 @@ as a separate first-class preroll and play before the year's commercial.
 Commercial playback is fail-open: no media, no matching year, or an unplayable
 ad never prevents the selected episode from starting.
 
+### Black transitions between videos
+
+OMXPlayer briefly reveals the Linux console when one video closes and the next
+opens. The optional `tvconsole.service` keeps tty1 black so these transitions
+look intentional. Install it on the Pi after confirming SSH access:
+
+```bash
+sudo cp systemd/tvconsole.service /etc/systemd/system/
+sudo cp systemd/tvplayer.service /etc/systemd/system/
+sudo systemctl disable --now getty@tty1.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now tvconsole.service
+sudo systemctl restart tvplayer.service
+```
+
+This disables only the visible login prompt on tty1; SSH is unaffected. With a
+keyboard attached, `Ctrl+Alt+F2` opens another local virtual terminal. Restore
+the original tty1 prompt with:
+
+```bash
+sudo systemctl disable --now tvconsole.service
+sudo systemctl enable --now getty@tty1.service
+```
+
 ## Planned extensions
 
 - Episode catalog validation and metadata
