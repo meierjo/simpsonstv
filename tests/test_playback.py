@@ -169,6 +169,7 @@ class PlaybackTests(unittest.TestCase):
                 backend=backend,
                 commercial_scheduler=commercial_scheduler,
                 broadcast_years={1: ((1, 1989), (13, 1990))},
+                suppress_initial_preroll=False,
             )
 
             selected, result = controller.play_next()
@@ -191,12 +192,33 @@ class PlaybackTests(unittest.TestCase):
                 backend=backend,
                 commercial_scheduler=FakeCommercialScheduler((commercial,)),
                 broadcast_years={1: ((1, 1989), (13, 1990))},
+                suppress_initial_preroll=False,
             )
 
             selected, result = controller.play_next()
 
             self.assertEqual((selected, result), (episode, 0))
             self.assertEqual(backend.played, [commercial, episode])
+
+    def test_cold_start_never_begins_with_commercial_without_cue(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            store = StateStore(Path(temporary_directory) / "state.json")
+            episode = self.make_episode("S01E01")
+            commercial = CommercialClip(Path("1989-ad.mp4"), 1989)
+            backend = FakeBackend()
+            controller = PlaybackController(
+                channels={"springfield-tv": Channel("springfield-tv", "Normal", ())},
+                scheduler=EpisodeScheduler((episode,), {}),
+                state_store=store,
+                backend=backend,
+                commercial_scheduler=FakeCommercialScheduler((commercial,)),
+                broadcast_years={1: ((1, 1989), (13, 1990))},
+            )
+
+            controller.play_next()
+            controller.play_next()
+
+            self.assertEqual(backend.played, [episode, commercial, episode])
 
     def test_verified_cue_plays_opening_then_ad_then_resumes_episode(self):
         with tempfile.TemporaryDirectory() as temporary_directory:

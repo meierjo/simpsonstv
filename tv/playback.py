@@ -68,6 +68,7 @@ class PlaybackController:
         episode_metadata=None,
         broadcast_years=None,
         break_cues=None,
+        suppress_initial_preroll=True,
     ):
         self.channels = channels
         self.scheduler = scheduler
@@ -77,6 +78,7 @@ class PlaybackController:
         self.episode_metadata = episode_metadata or {}
         self.broadcast_years = broadcast_years or {}
         self.break_cues = break_cues or {}
+        self._initial_broadcast_pending = bool(suppress_initial_preroll)
 
     def play_next(self):
         state = self.state_store.load()
@@ -102,6 +104,11 @@ class PlaybackController:
             preroll = self.commercial_scheduler.choose_preroll(year)
 
         cue = break_cue_for_episode(episode, self.break_cues)
+        if self._initial_broadcast_pending and cue is None:
+            # A cold boot should look like a television coming to life, not an
+            # advertisement player. Reviewed cues are different: the episode
+            # opening is shown before its first commercial.
+            preroll = ()
         if cue is not None and preroll:
             print("Playing opening of %s to %.1f seconds" % (episode.episode_id, cue), flush=True)
             return_code = self.backend.play(
@@ -111,6 +118,7 @@ class PlaybackController:
                 return episode, 0
             if return_code:
                 return episode, return_code
+            self._initial_broadcast_pending = False
 
         for clip in preroll:
             print(
@@ -137,6 +145,7 @@ class PlaybackController:
             ),
             flush=True,
         )
+        self._initial_broadcast_pending = False
         return episode, self.backend.play(
             episode,
             should_stop=channel_changed,

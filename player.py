@@ -18,28 +18,31 @@ from tv.state import StateStore
 REPOSITORY_ROOT = Path(__file__).resolve().parent
 
 
-def load_commercial_scheduler():
+def load_commercial_settings():
     """Load optional local commercials without making them a startup dependency."""
     config_path = REPOSITORY_ROOT / "config" / "commercials.json"
     try:
         with config_path.open() as config_file:
             config = json.load(config_file)
         if not config.get("enabled", True):
-            return None
+            return None, config
         root = (REPOSITORY_ROOT / config.get("root", "commercials/v2")).resolve()
         clips = load_approved_clips(root)
         if not clips:
             print("No approved commercials found in %s; episodes only" % root, flush=True)
-            return None
+            return None, config
         print("Loaded %d approved commercial clips from %s" % (len(clips), root), flush=True)
-        return CommercialScheduler(
-            clips,
-            recent_limit=config.get("recent_limit", 12),
-            include_bumpers=config.get("include_sponsor_bumpers", True),
+        return (
+            CommercialScheduler(
+                clips,
+                recent_limit=config.get("recent_limit", 12),
+                include_bumpers=config.get("include_sponsor_bumpers", True),
+            ),
+            config,
         )
     except (OSError, ValueError, TypeError) as error:
         print("Commercial library unavailable (%s); episodes only" % error, file=sys.stderr, flush=True)
-        return None
+        return None, {}
 
 
 def main():
@@ -72,15 +75,19 @@ def main():
         metadata,
         recent_ids=initial_state.recent_ids,
     )
+    commercial_scheduler, commercial_config = load_commercial_settings()
     controller = PlaybackController(
         channels=channels,
         scheduler=scheduler,
         state_store=state_store,
         backend=OmxPlayerBackend(),
-        commercial_scheduler=load_commercial_scheduler(),
+        commercial_scheduler=commercial_scheduler,
         episode_metadata=metadata,
         broadcast_years=broadcast_years,
         break_cues=break_cues,
+        suppress_initial_preroll=commercial_config.get(
+            "suppress_initial_preroll", True
+        ),
     )
 
     print(

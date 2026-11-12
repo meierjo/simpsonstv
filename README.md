@@ -197,6 +197,11 @@ OMXPlayer stops the opening segment under controller supervision and resumes
 the same file with its documented `--pos` option. A channel change still stops
 the complete player process group at any point in the sequence.
 
+On service start, an uncued first episode begins immediately without preroll.
+A reviewed episode may still run its commercial after the opening, because the
+first visible content is the show. Set `suppress_initial_preroll` to `false` in
+`config/commercials.json` to disable this cold-start behavior.
+
 #### Detecting and reviewing intro cues
 
 Run detection on the Mac, not the Pi. It requires FFmpeg and Chromaprint's

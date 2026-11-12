@@ -2,5 +2,6 @@
   "enabled": true,
   "root": "commercials/v2",
   "recent_limit": 12,
-  "include_sponsor_bumpers": true
+  "include_sponsor_bumpers": true,
+  "suppress_initial_preroll": true
 }
