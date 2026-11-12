@@ -17,3 +17,5 @@ commercials/**/*.mp4
 commercials/**/*.mkv
 commercials/**/*.mov
 commercials/**/*.avi
+commercials/incoming/
+commercials/manifests/*-review.html
