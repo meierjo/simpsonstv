@@ -3,7 +3,13 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.analyze_intros import analyze_candidates, fingerprint_similarity
+from tools.analyze_intros import (
+    FINGERPRINT_RATE,
+    analyze_candidates,
+    choose_audio_prefix_candidate,
+    fingerprint_prefix_end,
+    fingerprint_similarity,
+)
 from tools.review_intro_cues import export_reviewed_cues, load_candidates, save_review
 from tv.catalog import Episode
 
@@ -65,6 +71,44 @@ class IntroAnalysisTests(unittest.TestCase):
         left = [1, 2, 3, 4] * 20
         right = [99] + left
         self.assertGreater(fingerprint_similarity(left, right, 5), 0.95)
+
+    def test_fingerprint_prefix_end_finds_sustained_divergence(self):
+        shared_frames = int(30 * FINGERPRINT_RATE)
+        tail_frames = int(10 * FINGERPRINT_RATE)
+        left = ([0x12345678] * shared_frames) + ([0] * tail_frames)
+        right = ([0x12345678] * shared_frames) + ([0xFFFFFFFF] * tail_frames)
+        cue, score = fingerprint_prefix_end(left, right)
+        self.assertAlmostEqual(cue, 30.0, delta=0.2)
+        self.assertGreater(score, 0.95)
+
+    def test_audio_prefix_cluster_ignores_lone_late_outlier(self):
+        selected = choose_audio_prefix_candidate(
+            [
+                (50.0, 0.91, "S03E02"),
+                (52.0, 0.90, "S03E03"),
+                (99.0, 0.99, "S03E04"),
+            ]
+        )
+        self.assertEqual(selected[0], 52.0)
+        self.assertEqual(selected[2], 2)
+
+    def test_invalid_chapter_uses_audio_prefix_as_intro_end(self):
+        episodes = (self.episode("S05E01", 1), self.episode("S05E02", 2))
+        shared_frames = int(30 * FINGERPRINT_RATE)
+        tail_frames = int(10 * FINGERPRINT_RATE)
+        candidates = analyze_candidates(
+            episodes,
+            {
+                "S05E01": ([0xAAAAAAAA] * shared_frames) + ([0] * tail_frames),
+                "S05E02": ([0xAAAAAAAA] * shared_frames)
+                + ([0xFFFFFFFF] * tail_frames),
+            },
+            {"S05E01": 0.0, "S05E02": 0.0},
+        )
+        candidate = candidates["S05E01"]
+        self.assertAlmostEqual(candidate["intro_end"], 30.0, delta=0.2)
+        self.assertEqual(candidate["chapter_end"], 0.0)
+        self.assertEqual(candidate["detection_method"], "audio-prefix")
 
 
 if __name__ == "__main__":

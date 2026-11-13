@@ -3,6 +3,7 @@
 
 import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timezone
 import json
 from pathlib import Path
 import re
@@ -100,12 +101,85 @@ def fingerprint_similarity(left, right, seconds, threshold=10, jitter=2):
     return matching / float(frame_count)
 
 
+def fingerprint_prefix_end(
+    left,
+    right,
+    minimum_seconds=12.0,
+    maximum_seconds=180.0,
+    threshold=10,
+    jitter=2,
+):
+    """Find where a strongly shared opening becomes sustained different audio."""
+    frame_count = min(
+        len(left), len(right), int(maximum_seconds * FINGERPRINT_RATE)
+    )
+    matches = []
+    for index in range(frame_count):
+        start = max(0, index - jitter)
+        end = min(len(right), index + jitter + 1)
+        distance = min(
+            (left[index] ^ right[other]).bit_count() for other in range(start, end)
+        )
+        matches.append(distance <= threshold)
+    future_frames = int(5.0 * FINGERPRINT_RATE)
+    future_match_ceiling = 0.15
+    for index in range(int(minimum_seconds * FINGERPRINT_RATE), frame_count - future_frames):
+        prefix_score = sum(matches[:index]) / float(index)
+        future_score = sum(matches[index : index + future_frames]) / float(
+            future_frames
+        )
+        if prefix_score >= 0.65 and future_score <= future_match_ceiling:
+            # The rolling window becomes eligible just before the actual
+            # boundary because a small matching tail is allowed. Compensate
+            # for that allowance when reporting the estimated cut point.
+            correction = round(future_frames * future_match_ceiling)
+            return (index + correction) / FINGERPRINT_RATE, prefix_score
+    return None, 0.0
+
+
+def choose_audio_prefix_candidate(rows, tolerance=6.0):
+    """Choose the latest corroborated cluster, or the strongest lone peer."""
+    if not rows:
+        return None
+    clusters = []
+    for row in rows:
+        cluster = [
+            candidate
+            for candidate in rows
+            if abs(candidate[0] - row[0]) <= tolerance
+        ]
+        unique = {candidate[2]: candidate for candidate in cluster}
+        cluster = list(unique.values())
+        if len(cluster) >= 2:
+            clusters.append(cluster)
+    if clusters:
+        # A longer opening only matches peers whose opening is at least as
+        # long. Prefer the latest corroborated group, then stronger support.
+        cluster = max(
+            clusters,
+            key=lambda values: (
+                sorted(item[0] for item in values)[len(values) // 2],
+                sum(item[1] for item in values) / len(values),
+                len(values),
+            ),
+        )
+    else:
+        cluster = [max(rows, key=lambda row: (row[1], row[0]))]
+    ends = sorted(row[0] for row in cluster)
+    cue = ends[len(ends) // 2]
+    best = max(cluster, key=lambda row: row[1])
+    average_score = sum(row[1] for row in cluster) / len(cluster)
+    return cue, average_score, len(cluster), best[2]
+
+
 def analyze_candidates(episodes, fingerprints, chapter_ends, maximum_cue=180.0):
     candidates = {}
     for episode in episodes:
-        cue = chapter_ends.get(episode.episode_id)
+        chapter_cue = chapter_ends.get(episode.episode_id)
+        cue = chapter_cue
         plausible = cue is not None and 10.0 <= cue <= maximum_cue
         peer_rows = []
+        method = "chapter+audio" if plausible else "audio-prefix"
         if plausible:
             for peer in episodes:
                 if peer.episode_id == episode.episode_id:
@@ -119,25 +193,61 @@ def analyze_candidates(episodes, fingerprints, chapter_ends, maximum_cue=180.0):
                     min(cue, peer_cue),
                 )
                 peer_rows.append((score, abs(cue - peer_cue), peer.episode_id, peer_cue))
-        best = max(peer_rows, default=(0.0, 999.0, None, None))
-        score, cue_delta, peer_id, peer_cue = best
-        if plausible and score >= 0.80 and cue_delta <= 6.0:
-            confidence = "high"
-        elif plausible and score >= 0.65:
-            confidence = "medium"
+            best = max(peer_rows, default=(0.0, 999.0, None, None))
+            score, cue_delta, peer_id, peer_cue = best
+            support_count = sum(
+                row[0] >= 0.80 and row[1] <= 6.0 for row in peer_rows
+            )
+            if score >= 0.80 and cue_delta <= 6.0:
+                confidence = "high"
+            elif score >= 0.65:
+                confidence = "medium"
+            else:
+                confidence = "low"
         else:
-            confidence = "low"
+            prefix_rows = []
+            for peer in episodes:
+                if peer.episode_id == episode.episode_id:
+                    continue
+                prefix_end, prefix_score = fingerprint_prefix_end(
+                    fingerprints[episode.episode_id], fingerprints[peer.episode_id]
+                )
+                if prefix_end is not None:
+                    prefix_rows.append(
+                        (prefix_end, prefix_score, peer.episode_id)
+                    )
+            selected = choose_audio_prefix_candidate(prefix_rows)
+            if selected is None:
+                cue = None
+                score = 0.0
+                support_count = 0
+                peer_id = None
+                peer_cue = None
+                confidence = "low"
+                method = "none"
+            else:
+                cue, score, support_count, peer_id = selected
+                peer_cue = cue
+                confidence = (
+                    "high"
+                    if support_count >= 2 and score >= 0.80
+                    else "medium"
+                )
         candidates[episode.episode_id] = {
             "episode_id": episode.episode_id,
             "title": episode.title,
             "source_file": str(episode.path),
             "intro_start": 0.0,
-            "intro_end": round(cue, 3) if plausible else None,
-            "chapter_end": round(cue, 3) if cue is not None else None,
+            "intro_end": round(cue, 3) if cue is not None else None,
+            "chapter_end": (
+                round(chapter_cue, 3) if chapter_cue is not None else None
+            ),
             "confidence": confidence,
             "best_peer": peer_id,
             "best_peer_intro_end": round(peer_cue, 3) if peer_cue is not None else None,
             "audio_similarity": round(score, 4),
+            "audio_peer_count": support_count,
+            "detection_method": method,
             "reviewed": False,
         }
     return candidates
