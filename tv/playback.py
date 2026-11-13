@@ -54,6 +54,10 @@ class OmxPlayerBackend:
         )
         paused = False
         paused_at = None
+        media_position_seen = False
+        target_position = None
+        if stop_after is not None:
+            target_position = max(0.0, float(start_at or 0.0)) + float(stop_after)
         while process.poll() is None:
             if should_stop is not None and should_stop():
                 self._stop_process_group(process)
@@ -80,23 +84,17 @@ class OmxPlayerBackend:
                 started_at += time.monotonic() - paused_at
                 paused_at = None
                 print("Playback resumed after touch menu", flush=True)
-            if (
-                not paused
-                and stop_after is not None
-                and time.monotonic() - started_at >= stop_after
-            ):
+            if not paused and stop_after is not None:
                 elapsed = time.monotonic() - started_at
-                target_position = (start_at or 0.0) + stop_after
-                media_position = self._read_position_safely()
-                if media_position is None:
+                probe_after = max(0.0, float(stop_after) - 3.0)
+                media_position = None
+                if elapsed >= probe_after:
+                    media_position = self._read_position_safely()
+                    media_position_seen = media_position is not None or media_position_seen
+
+                if media_position is not None and media_position >= target_position:
                     print(
-                        "Break timing probe: target=%.3fs media=unavailable "
-                        "elapsed=%.3fs" % (target_position, elapsed),
-                        flush=True,
-                    )
-                else:
-                    print(
-                        "Break timing probe: target=%.3fs media=%.3fs "
+                        "Break timing cutoff: target=%.3fs media=%.3fs "
                         "elapsed=%.3fs offset=%+.3fs"
                         % (
                             target_position,
@@ -106,8 +104,24 @@ class OmxPlayerBackend:
                         ),
                         flush=True,
                     )
-                self._stop_process_group(process)
-                return 0
+                    self._stop_process_group(process)
+                    return 0
+
+                no_position_fallback = (
+                    not media_position_seen and elapsed >= float(stop_after)
+                )
+                stalled_position_fallback = (
+                    media_position_seen and elapsed >= float(stop_after) + 10.0
+                )
+                if no_position_fallback or stalled_position_fallback:
+                    print(
+                        "Break timing cutoff: target=%.3fs media=unavailable "
+                        "elapsed=%.3fs fallback=wall-clock"
+                        % (target_position, elapsed),
+                        flush=True,
+                    )
+                    self._stop_process_group(process)
+                    return 0
             time.sleep(0.25)
         return process.returncode
 

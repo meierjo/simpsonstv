@@ -113,7 +113,7 @@ class PlaybackTests(unittest.TestCase):
         )
 
     @mock.patch("tv.playback.time.sleep")
-    @mock.patch("tv.playback.time.monotonic", side_effect=[10.0, 71.0, 71.0])
+    @mock.patch("tv.playback.time.monotonic", side_effect=[10.0, 71.0])
     @mock.patch.object(OmxPlayerBackend, "_read_position_safely", return_value=60.125)
     @mock.patch("tv.playback.os.killpg")
     @mock.patch("subprocess.Popen")
@@ -128,6 +128,39 @@ class PlaybackTests(unittest.TestCase):
         self.assertEqual(result, 0)
         killpg.assert_called_once_with(321, signal.SIGTERM)
         read_position.assert_called_once_with()
+        sleep.assert_not_called()
+
+    @mock.patch("tv.playback.time.sleep")
+    @mock.patch("tv.playback.time.monotonic", side_effect=[10.0, 70.0, 72.0])
+    @mock.patch.object(
+        OmxPlayerBackend, "_read_position_safely", side_effect=[58.2, 60.125]
+    )
+    @mock.patch.object(OmxPlayerBackend, "_stop_process_group")
+    @mock.patch("subprocess.Popen")
+    def test_media_clock_waits_past_wall_cue_until_video_reaches_target(
+        self, popen, stop, read_position, monotonic, sleep
+    ):
+        popen.return_value.poll.return_value = None
+
+        OmxPlayerBackend().play(self.make_episode("S01E01"), stop_after=60.0)
+
+        self.assertEqual(read_position.call_count, 2)
+        self.assertEqual(sleep.call_count, 1)
+        stop.assert_called_once_with(popen.return_value)
+
+    @mock.patch("tv.playback.time.sleep")
+    @mock.patch("tv.playback.time.monotonic", side_effect=[10.0, 71.0])
+    @mock.patch.object(OmxPlayerBackend, "_read_position_safely", return_value=None)
+    @mock.patch.object(OmxPlayerBackend, "_stop_process_group")
+    @mock.patch("subprocess.Popen")
+    def test_media_clock_failure_keeps_wall_clock_fallback(
+        self, popen, stop, read_position, monotonic, sleep
+    ):
+        popen.return_value.poll.return_value = None
+
+        OmxPlayerBackend().play(self.make_episode("S01E01"), stop_after=60.0)
+
+        stop.assert_called_once_with(popen.return_value)
         sleep.assert_not_called()
 
     @mock.patch.object(OmxPlayerBackend, "_dbus_environment", return_value={})
@@ -151,7 +184,7 @@ class PlaybackTests(unittest.TestCase):
         self.assertIsNone(OmxPlayerBackend()._read_position_safely())
 
     @mock.patch("tv.playback.time.sleep")
-    @mock.patch("tv.playback.time.monotonic", side_effect=[10.0, 26.0, 26.0])
+    @mock.patch("tv.playback.time.monotonic", side_effect=[10.0, 26.0])
     @mock.patch.object(OmxPlayerBackend, "_read_position_safely", return_value=91.0)
     @mock.patch.object(OmxPlayerBackend, "_stop_process_group")
     @mock.patch("subprocess.Popen")

@@ -214,10 +214,11 @@ OMXPlayer stops the opening segment under controller supervision and resumes
 the same file with its documented `--pos` option. A channel change still stops
 the complete player process group at any point in the sequence.
 
-For a reviewed in-episode break, the player logs a `Break timing probe` line
-at the cutoff. It compares the configured cue with OMXPlayer's D-Bus media
-position without changing playback behavior. This measurement is intentionally
-fail-open while timing is validated on the target Pi.
+For a reviewed in-episode break, the cutoff follows OMXPlayer's D-Bus media
+position rather than counting decoder startup as episode time. A `Break timing
+cutoff` log line records the configured target and observed position. If the
+media position is unavailable, playback falls back to the former wall-clock
+cutoff instead of preventing the episode from continuing.
 
 On service start, an uncued first episode begins immediately without preroll.
 A reviewed episode may still run its commercial after the opening, because the
