@@ -82,7 +82,12 @@ class OmxChannelMenu:
     def show(self, active_channel_id, page=None):
         if page is None:
             page = page_for_channel(active_channel_id)
-        self.show_asset(self._menu_filename(active_channel_id, page))
+        self.process = self._start_asset(
+            self._menu_filename(active_channel_id, page),
+            layer=self._next_layer,
+            loop=True,
+        )
+        self._next_layer += 1
 
     @staticmethod
     def _menu_filename(active_channel_id, page):
@@ -100,7 +105,7 @@ class OmxChannelMenu:
         """Start the visible page before spending a decoder on its neighbor."""
         self._current_page = page
         current = self._start_asset(
-            self._menu_filename(active_channel_id, page), layer=10
+            self._menu_filename(active_channel_id, page), layer=10, loop=True
         )
         self._buffered_pages = {page: current}
         self.process = current
@@ -116,7 +121,7 @@ class OmxChannelMenu:
         if existing is not None and existing.poll() is None:
             return
         other = self._start_asset(
-            self._menu_filename(active_channel_id, other_page), layer=9
+            self._menu_filename(active_channel_id, other_page), layer=9, loop=True
         )
         self._buffered_pages[other_page] = other
         self._next_layer = 8
@@ -152,6 +157,7 @@ class OmxChannelMenu:
         replacement = self._start_asset(
             self._menu_filename(active_channel_id, previous_page),
             layer=self._next_layer,
+            loop=True,
         )
         self._next_layer -= 1
         self._buffered_pages[previous_page] = replacement
@@ -160,20 +166,18 @@ class OmxChannelMenu:
         self.process = self._start_asset(filename, layer=self._next_layer)
         self._next_layer += 1
 
-    def _start_asset(self, filename, layer):
+    def _start_asset(self, filename, layer, loop=False):
         asset = self.asset_directory / filename
         if not asset.is_file():
             raise RuntimeError("Menu asset is missing: %s" % asset)
+        command = ["omxplayer", "--no-osd"]
+        if loop:
+            command.append("--loop")
+        command.extend(
+            ["--layer", str(layer), "--aspect-mode", "fill", str(asset)]
+        )
         process = subprocess.Popen(
-            [
-                "omxplayer",
-                "--no-osd",
-                "--layer",
-                str(layer),
-                "--aspect-mode",
-                "fill",
-                str(asset),
-            ],
+            command,
             start_new_session=True,
         )
         self._processes.append(process)
