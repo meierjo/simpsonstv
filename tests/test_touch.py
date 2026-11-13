@@ -18,6 +18,7 @@ from tv.menu import (
     page_after_swipe,
     page_for_channel,
     shutdown_at,
+    shutdown_confirm_at,
     swipe_returns_to_playback,
 )
 
@@ -155,6 +156,11 @@ class TouchTests(unittest.TestCase):
         self.assertFalse(shutdown_at((320, 475)))
         self.assertFalse(shutdown_at((150, 200)))
         self.assertIsNone(channel_at((320, 425)))
+
+    def test_shutdown_confirmation_has_a_separate_large_target(self):
+        self.assertTrue(shutdown_confirm_at((320, 260)))
+        self.assertFalse(shutdown_confirm_at((320, 100)))
+        self.assertFalse(shutdown_confirm_at((20, 260)))
 
     def test_touch_tracker_retains_release_position(self):
         tracker = MultiTouchTracker()

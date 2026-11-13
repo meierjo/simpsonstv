@@ -12,6 +12,7 @@ SPECIAL_LEFT_CARD = (18, 112, 190, 223)
 SPECIAL_CENTER_CARD = (225, 112, 190, 223)
 SPECIAL_RIGHT_CARD = (432, 112, 190, 223)
 SHUTDOWN_CARD = (70, 345, 500, 100)
+SHUTDOWN_CONFIRM_CARD = (70, 155, 500, 220)
 MENU_PAGE_COUNT = 2
 
 
@@ -57,6 +58,11 @@ def shutdown_at(position):
     return _contains(SHUTDOWN_CARD, position[0], position[1])
 
 
+def shutdown_confirm_at(position):
+    """Return True inside the second-step shutdown confirmation target."""
+    return _contains(SHUTDOWN_CONFIRM_CARD, position[0], position[1])
+
+
 def _contains(rectangle, x, y):
     left, top, width, height = rectangle
     return left <= x < left + width and top <= y < top + height
@@ -65,11 +71,11 @@ def _contains(rectangle, x, y):
 class OmxChannelMenu:
     """Display a pre-rendered menu clip using the proven video path."""
 
-    def __init__(self, asset_directory):
+    def __init__(self, asset_directory, start_layer=10):
         self.asset_directory = Path(asset_directory)
         self.process = None
         self._processes = []
-        self._next_layer = 10
+        self._next_layer = int(start_layer)
         self._buffered_pages = {}
         self._current_page = None
 

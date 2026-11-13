@@ -15,6 +15,7 @@ from tv.menu import (
     page_after_swipe,
     page_for_channel,
     shutdown_at,
+    shutdown_confirm_at,
     swipe_returns_to_playback,
 )
 from tv.now_playing import NowPlayingStore
@@ -122,6 +123,7 @@ def run():
     )
     tracker = MultiTouchTracker()
     menu = None
+    shutdown_confirmation = None
     info_overlay = OmxInfoOverlay(
         REPOSITORY_ROOT / "assets",
         REPOSITORY_ROOT / "runtime",
@@ -132,6 +134,7 @@ def run():
     menu_deadline = None
     pending_released_position = None
     shutdown_hold_active = False
+    shutdown_confirmation_open = False
 
     def stop_service(signum, frame):
         raise KeyboardInterrupt()
@@ -154,6 +157,7 @@ def run():
 
     def open_channel_menu():
         nonlocal menu, menu_open, menu_armed, menu_page, menu_deadline
+        nonlocal shutdown_confirmation, shutdown_confirmation_open
         nonlocal shutdown_hold_active
         try:
             info_overlay.close()
@@ -165,6 +169,8 @@ def run():
             menu.show_buffered(active_channel, page=menu_page)
             menu_open = True
             menu_armed = False
+            shutdown_confirmation = None
+            shutdown_confirmation_open = False
             shutdown_hold_active = False
             gesture_detector.reset()
             menu_deadline = time.monotonic() + MENU_TIMEOUT_SECONDS
@@ -181,6 +187,46 @@ def run():
                 % (error, channel_id),
                 flush=True,
             )
+
+    def open_shutdown_confirmation():
+        nonlocal menu, menu_open, shutdown_confirmation
+        nonlocal shutdown_confirmation_open, menu_deadline
+        try:
+            if menu is not None:
+                menu.close()
+            shutdown_confirmation = OmxChannelMenu(
+                REPOSITORY_ROOT / "assets", start_layer=20
+            )
+            shutdown_confirmation.show_asset("shutdown_confirmation.mp4")
+            shutdown_confirmation_open = True
+            menu_deadline = time.monotonic() + MENU_TIMEOUT_SECONDS
+            print("Safe shutdown confirmation opened", flush=True)
+        except Exception as error:
+            if shutdown_confirmation is not None:
+                shutdown_confirmation.close()
+            shutdown_confirmation = None
+            shutdown_confirmation_open = False
+            state_store.set_menu_open(False)
+            menu_open = False
+            print("Safe shutdown confirmation unavailable (%s)" % error, flush=True)
+
+    def close_shutdown_confirmation():
+        nonlocal menu, menu_open, shutdown_confirmation, shutdown_confirmation_open
+        nonlocal menu_deadline
+        if shutdown_confirmation is not None:
+            shutdown_confirmation.close()
+        shutdown_confirmation = None
+        shutdown_confirmation_open = False
+        shutdown_detector.update(0, time.time())
+        try:
+            menu = OmxChannelMenu(REPOSITORY_ROOT / "assets")
+            menu.show_buffered(state_store.load().channel_id, page=menu_page)
+            menu_deadline = time.monotonic() + MENU_TIMEOUT_SECONDS
+            print("Safe shutdown confirmation cancelled", flush=True)
+        except Exception as error:
+            state_store.set_menu_open(False)
+            menu_open = False
+            print("Could not restore channel menu (%s)" % error, flush=True)
 
     try:
         while True:
@@ -260,13 +306,34 @@ def run():
                             gesture = gesture_detector.release(
                                 mapped_released_position, event.timestamp()
                             )
-                            _log_gesture(gesture, "menu")
+                            _log_gesture(
+                                gesture,
+                                "shutdown-confirmation"
+                                if shutdown_confirmation_open
+                                else "menu",
+                            )
                             print(
                                 "Touch selection: raw=%s mapped=%s"
                                 % (released_position, mapped_released_position),
                                 flush=True,
                             )
-                            if gesture is not None and gesture.kind.startswith("swipe-"):
+                            if shutdown_confirmation_open:
+                                cancel_confirmation = (
+                                    gesture is not None
+                                    and gesture.kind == "swipe-right"
+                                ) or (
+                                    gesture is not None
+                                    and gesture.kind == "tap"
+                                    and not shutdown_confirm_at(
+                                        mapped_released_position
+                                    )
+                                )
+                                if cancel_confirmation:
+                                    close_shutdown_confirmation()
+                                    menu_deadline = (
+                                        time.monotonic() + MENU_TIMEOUT_SECONDS
+                                    )
+                            elif gesture is not None and gesture.kind.startswith("swipe-"):
                                 if swipe_returns_to_playback(menu_page, gesture.kind):
                                     print("Channel menu returned to playback", flush=True)
                                     menu_open = _close_menu(menu, state_store)
@@ -286,10 +353,17 @@ def run():
                                         )
                                     menu_deadline = time.monotonic() + MENU_TIMEOUT_SECONDS
                             elif gesture is not None and gesture.kind == "tap":
-                                selected = channel_at(
-                                    mapped_released_position, page=menu_page
-                                )
-                                if selected is not None:
+                                selected = None
+                                if shutdown_at(mapped_released_position):
+                                    open_shutdown_confirmation()
+                                else:
+                                    selected = channel_at(
+                                        mapped_released_position, page=menu_page
+                                    )
+                                if (
+                                    not shutdown_confirmation_open
+                                    and selected is not None
+                                ):
                                     state_store.set_channel(selected)
                                     print(
                                         "Channel menu selected: %s" % selected,
@@ -320,9 +394,10 @@ def run():
                     else None
                 )
                 shutdown_contact = (
-                    menu_armed
+                    shutdown_confirmation_open
+                    and menu_armed
                     and active_position is not None
-                    and shutdown_at(active_position)
+                    and shutdown_confirm_at(active_position)
                 )
                 shutdown_hold_eligible = (
                     shutdown_contact and gesture_detector.hold_eligible
@@ -343,6 +418,10 @@ def run():
                 ):
                     print("Safe shutdown requested", flush=True)
                     shutdown_hold_active = False
+                    if shutdown_confirmation is not None:
+                        shutdown_confirmation.close()
+                    shutdown_confirmation = None
+                    shutdown_confirmation_open = False
                     _request_shutdown(menu, state_store)
                     menu_open = False
                     menu = None
@@ -351,6 +430,10 @@ def run():
 
             if menu_open and time.monotonic() >= menu_deadline:
                 print("Channel menu timed out", flush=True)
+                if shutdown_confirmation is not None:
+                    shutdown_confirmation.close()
+                    shutdown_confirmation = None
+                    shutdown_confirmation_open = False
                 menu_open = _close_menu(menu, state_store)
                 menu = None
                 detector.update(0, time.time())
@@ -359,6 +442,8 @@ def run():
         return 0
     finally:
         info_overlay.close()
+        if shutdown_confirmation is not None:
+            shutdown_confirmation.close()
         if menu_open:
             _close_menu(menu, state_store)
 

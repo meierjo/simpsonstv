@@ -82,6 +82,18 @@ class MenuTests(unittest.TestCase):
                 start_new_session=True,
             )
 
+    @mock.patch("tv.menu.subprocess.Popen")
+    def test_confirmation_overlay_uses_foreground_layer(self, popen):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            asset_directory = Path(temporary_directory)
+            asset = asset_directory / "shutdown_confirmation.mp4"
+            asset.touch()
+
+            OmxChannelMenu(asset_directory, start_layer=20).show_asset(asset.name)
+
+            command = popen.call_args.args[0]
+            self.assertEqual(command[command.index("--layer") + 1], "20")
+
     @mock.patch("tv.menu.os.killpg")
     @mock.patch("tv.menu.subprocess.Popen")
     def test_menu_pages_are_preloaded_for_an_instant_handoff(self, popen, killpg):

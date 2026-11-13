@@ -73,7 +73,8 @@ and mouse simulator will provide the same events during development on macOS.
 ### Safe shutdown
 
 Safe shutdown belongs inside the hidden touch overlay as a large "GOOD NIGHT,
-SPRINGFIELD" control. Holding it for one second begins shutdown; a short
+SPRINGFIELD" control. Tapping it opens a confirmation screen; a separate
+one-second hold begins shutdown. A short
 tap does nothing beyond filling a visible progress ring. The final clip tells
 the user when the Pi may be unplugged.
 
@@ -267,7 +268,7 @@ on-screen controls.
 - Document when it is safe to unplug.
 
 **Done when:** the front knob remains unchanged, accidental shutdown is
-impractical, and a one-second on-screen hold produces a clean shutdown.
+impractical, and the two-step on-screen confirmation produces a clean shutdown.
 
 ### Phase 5 - Commercial television
 

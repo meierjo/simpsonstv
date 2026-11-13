@@ -132,7 +132,7 @@ def build_image(active_channel, page=0):
         )
     draw.rectangle(SHUTDOWN_CARD, fill=(101, 35, 63), outline=(242, 234, 245), width=4)
     centered(draw, "GOOD NIGHT, SPRINGFIELD", WIDTH // 2, 357, font(25), (255, 246, 197))
-    centered(draw, "HOLD 1 SECOND TO SHUT DOWN", WIDTH // 2, 402, font(17), (255, 226, 85))
+    centered(draw, "TAP FOR SHUTDOWN OPTIONS", WIDTH // 2, 402, font(17), (255, 226, 85))
     return image
 
 
@@ -155,6 +155,19 @@ def build_goodnight_image():
     centered(draw, "SPRINGFIELD", WIDTH // 2, 215, font(58), (255, 226, 85))
     centered(draw, "SHUTTING DOWN SAFELY...", WIDTH // 2, 330, font(26), (40, 191, 190))
     centered(draw, "UNPLUG AFTER THE SCREEN GOES DARK", WIDTH // 2, 382, font(18), (223, 214, 235))
+    return image
+
+
+def build_shutdown_confirmation():
+    image = Image.new("RGB", (WIDTH, HEIGHT), (22, 11, 40))
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((0, 0, WIDTH, 18), fill=(247, 196, 54))
+    draw.rectangle((0, 18, WIDTH, 30), fill=(40, 191, 190))
+    centered(draw, "SHUT DOWN?", WIDTH // 2, 58, font(48), (255, 246, 197))
+    draw.rectangle((70, 155, 570, 375), fill=(101, 35, 63), outline=(255, 226, 85), width=7)
+    centered(draw, "HOLD HERE", WIDTH // 2, 198, font(46), (255, 246, 197))
+    centered(draw, "FOR 1 SECOND", WIDTH // 2, 258, font(38), (255, 226, 85))
+    centered(draw, "SWIPE RIGHT OR TAP OUTSIDE TO CANCEL", WIDTH // 2, 416, font(17), (216, 205, 231))
     return image
 
 
@@ -225,6 +238,12 @@ def main():
     png_path = ASSET_DIRECTORY / "good_night_springfield.png"
     mp4_path = ASSET_DIRECTORY / "good_night_springfield.mp4"
     build_goodnight_image().save(png_path)
+    encode_clip(png_path, mp4_path)
+    print("Built %s" % mp4_path)
+
+    png_path = ASSET_DIRECTORY / "shutdown_confirmation.png"
+    mp4_path = ASSET_DIRECTORY / "shutdown_confirmation.mp4"
+    build_shutdown_confirmation().save(png_path)
     encode_clip(png_path, mp4_path)
     print("Built %s" % mp4_path)
 

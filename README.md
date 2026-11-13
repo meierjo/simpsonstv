@@ -120,10 +120,12 @@ safely falls back to the original direct channel toggle.
 
 ### Safe shutdown
 
-The third Touch Tuner card requires a continuous one-second hold. It plays a
-short confirmation clip and creates a local shutdown request. A root-owned
-systemd path unit handles the privileged operating-system shutdown, so the
-touch listener itself continues to run as the unprivileged `pi` user.
+Tap the third Touch Tuner card to open a separate confirmation screen, then
+hold its large confirmation target for one second. This two-step gesture plays
+a readable farewell and creates a local shutdown request. Swipe right or tap
+outside the confirmation target to cancel. A root-owned systemd path unit
+handles the privileged operating-system shutdown, so the touch listener itself
+continues to run as the unprivileged `pi` user.
 
 Install the shutdown units once on the Pi:
 
