@@ -3,5 +3,8 @@
   "root": "commercials/v2",
   "recent_limit": 12,
   "include_sponsor_bumpers": true,
-  "suppress_initial_preroll": true
+  "suppress_initial_preroll": true,
+  "excluded_files": [
+    "1995/fox-commercials-09-17-1995-tgdx7tnhzfm/1995 - fox-commercials-09-17-1995-tgdx7tnhzfm - 009.mp4"
+  ]
 }

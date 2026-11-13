@@ -28,7 +28,9 @@ def load_commercial_settings():
         if not config.get("enabled", True):
             return None, config
         root = (REPOSITORY_ROOT / config.get("root", "commercials/v2")).resolve()
-        clips = load_approved_clips(root)
+        clips = load_approved_clips(
+            root, excluded_files=config.get("excluded_files", ())
+        )
         if not clips:
             print("No approved commercials found in %s; episodes only" % root, flush=True)
             return None, config

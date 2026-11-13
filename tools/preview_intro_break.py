@@ -44,7 +44,10 @@ def build_pilot(episode_id, repository_root=REPOSITORY_ROOT):
         commercial_config = json.load(config_file)
     commercial_root = repository_root / commercial_config.get("root", "commercials/v2")
     scheduler = CommercialScheduler(
-        load_approved_clips(commercial_root),
+        load_approved_clips(
+            commercial_root,
+            excluded_files=commercial_config.get("excluded_files", ()),
+        ),
         recent_limit=commercial_config.get("recent_limit", 12),
         include_bumpers=commercial_config.get("include_sponsor_bumpers", True),
     )

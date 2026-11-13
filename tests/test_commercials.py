@@ -61,6 +61,31 @@ class CommercialTests(unittest.TestCase):
             clips = load_approved_clips(root)
             self.assertEqual(clips, (CommercialClip((root / "1994" / "keep.mp4").resolve(), 1994),))
 
+    def test_loader_honors_committed_exclusion_list(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "manifests").mkdir()
+            (root / "1995").mkdir()
+            (root / "1995" / "credits.mp4").touch()
+            (root / "1995" / "ad.mp4").touch()
+            manifest = {
+                "year": 1995,
+                "clips": [
+                    {"file": "1995/credits.mp4", "approved": True},
+                    {"file": "1995/ad.mp4", "approved": True},
+                ],
+            }
+            (root / "manifests" / "1995.json").write_text(json.dumps(manifest))
+
+            clips = load_approved_clips(
+                root, excluded_files=("1995/credits.mp4",)
+            )
+
+            self.assertEqual(
+                clips,
+                (CommercialClip((root / "1995" / "ad.mp4").resolve(), 1995),),
+            )
+
     def test_scheduler_chooses_bumper_then_matching_year_commercial(self):
         clips = (
             CommercialClip(Path("bumper.mp4"), 1989, "sponsor-bumper"),

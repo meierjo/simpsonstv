@@ -57,9 +57,10 @@ def broadcast_year_for_episode(episode, metadata, rules):
     return None
 
 
-def load_approved_clips(root):
+def load_approved_clips(root, excluded_files=()):
     """Read approved, existing clips from importer manifests below *root*."""
     root = Path(root).expanduser().resolve()
+    excluded = {Path(str(path)).as_posix() for path in excluded_files}
     clips = []
     seen_paths = set()
     for manifest_path in sorted(root.glob("manifests/*.json")):
@@ -80,10 +81,14 @@ def load_approved_clips(root):
                 continue
             clip_path = (root / relative_path).resolve()
             try:
-                clip_path.relative_to(root)
+                relative_path = clip_path.relative_to(root).as_posix()
             except ValueError:
                 continue
-            if not clip_path.is_file() or clip_path in seen_paths:
+            if (
+                relative_path in excluded
+                or not clip_path.is_file()
+                or clip_path in seen_paths
+            ):
                 continue
             clips.append(CommercialClip(clip_path, year, record.get("kind", "commercial")))
             seen_paths.add(clip_path)
