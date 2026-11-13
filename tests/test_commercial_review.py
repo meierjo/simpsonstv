@@ -3,7 +3,13 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.review_commercials import load_manifest, render_review, reset_conservative, save_selections
+from tools.review_commercials import (
+    load_manifest,
+    render_analysis,
+    render_review,
+    reset_conservative,
+    save_selections,
+)
 
 
 class CommercialReviewTests(unittest.TestCase):
@@ -74,6 +80,22 @@ class CommercialReviewTests(unittest.TestCase):
             self.assertIn("Save this year", document)
             self.assertIn("name='keep'", document)
             self.assertIn("/save/1994-test.json", document)
+
+    def test_analysis_is_shown_without_changing_keep_choice(self):
+        document = render_analysis(
+            {
+                "approved": True,
+                "analysis": {
+                    "recommended_approved": False,
+                    "suggested_kind": "credits",
+                    "confidence": 0.94,
+                    "transcript": "Executive producer",
+                    "reasons": ["Credits wording: executive producer"],
+                },
+            }
+        )
+        self.assertIn("REVIEW / REJECT", document)
+        self.assertIn("Executive producer", document)
 
 
 if __name__ == "__main__":

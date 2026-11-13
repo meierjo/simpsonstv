@@ -79,6 +79,44 @@ python3 tools/approve_commercials.py commercials/v2 --reset-conservative
 `--confirm-reviewed` remains available when every candidate really should be
 enabled, but it is deliberately broader than the normal review workflow.
 
+## Transcript-assisted review
+
+Run transcription on the Mac, not the Pi. The analyzer transcribes each
+original reel once with local MLX Whisper, maps word timestamps onto the
+existing clip boundaries, checks silence around each cut, and adds evidence to
+the review cards. Generated raw JSON, searchable TXT, and timestamped VTT files
+stay in the ignored `commercials/v2/analysis/` directory.
+
+Start with recommendation-only mode. This adds analysis but never changes a
+Keep checkbox:
+
+```bash
+python3 tools/analyze_commercials.py commercials/v2 --year 1995
+python3 tools/review_commercials.py commercials/v2
+```
+
+The defaults reuse this project's local `mlx-whisper` environment and
+`whisper-large-v3-turbo` model. Use `--cli` and `--model` to select different
+installations.
+
+After reviewing recommendations, strict mode only unchecks questionable clips;
+it never turns a previously rejected clip back on:
+
+```bash
+python3 tools/analyze_commercials.py commercials/v2 --year 1995 --apply-strict
+```
+
+Repeat `--year` to process several years without touching reviewed ones:
+
+```bash
+python3 tools/analyze_commercials.py commercials/v2 \
+  --year 1990 --year 1991 --year 1993 --apply-strict
+```
+
+Credits, show promos, sentence fragments, speech crossing a cut, silent clips,
+and uncertain material remain unchecked for human review. A manual exclusion
+in `config/commercials.json` always wins.
+
 The player reads only approved clips whose files still exist. By default it
 selects one exact-year commercial before each episode, avoids recent repeats,
 and adds an approved sponsor bumper first when that year has one. Copy the

@@ -22,3 +22,4 @@ commercials/incoming/
 commercials/**/manifests/*.json
 commercials/**/manifests/*-review.html
 commercials/**/manifests/index.html
+commercials/v2/analysis/

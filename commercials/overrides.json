@@ -1,5 +1,110 @@
 {
   "sources": {
+    "https://www.dailymotion.com/video/x4zft2f": {
+      "boundary_notes": [
+        {
+          "action": "resegment",
+          "original_clips": ["002", "003", "004", "005", "006", "007"],
+          "start": 30.111,
+          "end": 220.434,
+          "notes": "Human review confirmed transcript and video continuity across every current cut; the commercial ends cleanly only at the end of 007."
+        },
+        {
+          "action": "resegment",
+          "original_clips": ["009", "010", "011"],
+          "start": 277.808,
+          "end": 386.067,
+          "notes": "Human review confirmed the current clips bleed into one another."
+        },
+        {
+          "action": "split",
+          "original_clip": "015",
+          "start": 476.59,
+          "end": 522.103,
+          "notes": "Human review confirmed two commercials inside the current extract."
+        },
+        {
+          "action": "resegment",
+          "original_clips": ["018", "019"],
+          "start": 582.062,
+          "end": 672.887,
+          "notes": "Human review confirmed continuity across the current cut."
+        },
+        {
+          "action": "resegment",
+          "original_clips": ["022", "023", "024", "025"],
+          "start": 714.895,
+          "end": 880.311,
+          "notes": "Human review confirmed the current clips bleed into one another."
+        }
+      ]
+    },
+    "https://www.youtube.com/watch?v=uwxz5MLR73E": {
+      "clips": {
+        "012": {
+          "approved": false,
+          "kind": "program-continuity",
+          "notes": "Human review identified upcoming-show promos rather than a standalone commercial."
+        }
+      },
+      "boundary_notes": [
+        {
+          "action": "split",
+          "original_clip": "004",
+          "at": 92.576,
+          "notes": "Human review found two items; detected black separator divides the Paulie promo from Mentos."
+        },
+        {
+          "action": "split",
+          "original_clip": "005",
+          "at": 152.419,
+          "notes": "Human review found two commercials; strong hard cut divides Pepsi from Sprint."
+        },
+        {
+          "action": "resegment",
+          "original_clips": ["006", "007", "008"],
+          "start": 182.382,
+          "end": 304.638,
+          "notes": "Human review identified one multi-ad broadcast break with invalid clip boundaries; the end of 007 continues into 008. Do not play current extracts."
+        },
+        {
+          "action": "resegment",
+          "original_clips": ["011", "012"],
+          "start": 385.285,
+          "end": 505.705,
+          "candidate_boundaries": [415.382, 428.795, 448.648, 475.375, 495.428],
+          "notes": "Clip 011 contains two items and its second promo crosses into 012; clip 012 continues with Doublemint and upcoming-show continuity."
+        }
+      ]
+    },
+    "https://www.dailymotion.com/video/x6l58nk": {
+      "boundary_notes": [
+        {
+          "action": "split",
+          "original_clip": "001",
+          "at": 29.075,
+          "notes": "Human review found two commercials; hard cut separates Dreamcast and McDonald's spots."
+        },
+        {
+          "action": "split",
+          "original_clip": "005",
+          "at": 176.23,
+          "notes": "Human review and transcript separate ShopRite from Malcolm in the Middle continuity."
+        },
+        {
+          "action": "split",
+          "original_clip": "006",
+          "at": 235.798,
+          "notes": "Human review found two commercials; midpoint of detected black separator."
+        },
+        {
+          "action": "split",
+          "original_clip": "007",
+          "at": [280.894, 315.842],
+          "notes": "Transcript and video show three spots: Army Reserve, The Iron Giant, and Snickers."
+        }
+      ]
+    },
     "https://www.youtube.com/watch?v=a1czeKjcRuk": {
       "clips": {
         "001": {
@@ -7,7 +112,22 @@
           "kind": "sponsor-bumper",
           "notes": "The Simpsons is brought to you by sponsor bumper; confirmed by review."
         }
-      }
+      },
+      "boundary_notes": [
+        {
+          "action": "split",
+          "original_clip": "005",
+          "at": 113.989,
+          "notes": "Human review found two commercials; midpoint of detected black interval 113.9138-114.06395."
+        },
+        {
+          "action": "merge",
+          "original_clips": ["009", "010"],
+          "start": 196.129,
+          "end": 230.255,
+          "notes": "Human review confirmed both extracted halves are one commercial."
+        }
+      ]
     }
   }
 }

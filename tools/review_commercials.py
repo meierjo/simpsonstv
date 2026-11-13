@@ -130,7 +130,37 @@ a{color:#ffd54a}main{display:grid;grid-template-columns:repeat(auto-fit,minmax(3
 article{background:#292545;padding:1rem;border-radius:12px}video{width:100%}
 .controls{position:sticky;top:0;background:#171527;padding:1rem 0;z-index:2}
 button{font:700 18px system-ui;padding:.7rem 1.2rem}small{color:#c9c3e8}
+.badges{display:flex;flex-wrap:wrap;gap:.35rem}.badge{background:#4a446f;border-radius:999px;padding:.25rem .55rem;font-size:.78rem;font-weight:700}
+.badge.good{background:#236841}.badge.warn{background:#8a4725}.transcript{background:#1c1931;padding:.7rem;border-radius:8px;max-height:9rem;overflow:auto}
+.reasons{color:#ded9f5;padding-left:1.2rem;font-size:.9rem}
 """
+
+
+def render_analysis(clip):
+    analysis = clip.get("analysis")
+    if not isinstance(analysis, dict):
+        return "<p><small>Not analyzed yet.</small></p>"
+    recommended = bool(analysis.get("recommended_approved"))
+    badge_class = "good" if recommended else "warn"
+    labels = [
+        "<span class='badge %s'>%s</span>"
+        % (badge_class, "RECOMMENDED KEEP" if recommended else "REVIEW / REJECT")
+    ]
+    labels.append(
+        "<span class='badge'>%s · %.0f%%</span>"
+        % (
+            escape(str(analysis.get("suggested_kind", "uncertain")).upper()),
+            float(analysis.get("confidence", 0)) * 100,
+        )
+    )
+    reasons = "".join(
+        "<li>%s</li>" % escape(str(reason)) for reason in analysis.get("reasons", [])
+    )
+    transcript = escape(str(analysis.get("transcript") or "No speech transcript."))
+    return (
+        "<div class='badges'>%s</div><p class='transcript'>%s</p><ul class='reasons'>%s</ul>"
+        % ("".join(labels), transcript, reasons)
+    )
 
 
 def render_index(root):
@@ -164,13 +194,14 @@ def render_review(root, path):
         relative = clip["file"]
         cards.append(
             "<article><h2>Clip %03d</h2><video controls preload='metadata' src='/media/%s'></video>"
-            "<p><strong>%s</strong><br>%.1f seconds</p>"
+            "<p><strong>%s</strong><br>%.1f seconds</p>%s"
             "<label><input type='checkbox' name='keep' value='%d'%s> Keep</label></article>"
             % (
                 int(clip["sequence"]),
                 quote(relative),
                 escape(str(clip.get("kind", "unknown"))),
                 float(clip.get("duration", 0)),
+                render_analysis(clip),
                 int(clip["sequence"]),
                 checked,
             )
