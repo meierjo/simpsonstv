@@ -106,6 +106,19 @@ class CommercialAnalysisTests(unittest.TestCase):
         self.assertEqual(result["suggested_kind"], "long-form-candidate")
         self.assertFalse(result["recommended_approved"])
 
+    def test_long_sponsor_wording_is_still_rejected(self):
+        clip = {"start": 0, "end": 40, "duration": 40}
+        units = [
+            {
+                "start": 1,
+                "end": 39,
+                "text": "The Simpsons is brought to you by a sponsor",
+            }
+        ]
+        result = classify_clip(clip, units, "word", ((39.8, 40.0),), 40)
+        self.assertEqual(result["suggested_kind"], "long-form-candidate")
+        self.assertFalse(result["recommended_approved"])
+
     def test_one_word_clip_is_too_uncertain_to_keep(self):
         clip = {"start": 0, "end": 30, "duration": 30}
         units = [{"start": 2, "end": 3, "text": "Yeah"}]

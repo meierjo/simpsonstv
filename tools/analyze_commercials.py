@@ -292,14 +292,14 @@ def classify_clip(
     elif crosses_start or crosses_end:
         suggested_kind = "suspected-fragment"
         confidence = 0.91
-    elif sponsor_hits:
-        suggested_kind = "sponsor-bumper"
-        recommended = clean_start and clean_end
-        confidence = 0.96 if recommended else 0.78
     elif duration > 35.0:
         suggested_kind = "long-form-candidate"
         confidence = 0.82
         reasons.append("Over 35 seconds; reviewed reels commonly contain multiple spots")
+    elif sponsor_hits:
+        suggested_kind = "sponsor-bumper"
+        recommended = clean_start and clean_end
+        confidence = 0.96 if recommended else 0.78
     elif 0 < len(text.split()) < 4:
         suggested_kind = "uncertain"
         confidence = 0.62
