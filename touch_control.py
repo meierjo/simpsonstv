@@ -38,7 +38,7 @@ def load_touch_config():
         "swipe_distance_pixels": 80,
         "swipe_axis_ratio": 1.5,
         "menu_hold_seconds": 2.0,
-        "shutdown_hold_seconds": 3.0,
+        "shutdown_hold_seconds": 1.0,
     }
     try:
         with (REPOSITORY_ROOT / "config" / "touch.json").open() as config_file:

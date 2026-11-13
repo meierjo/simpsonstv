@@ -118,7 +118,7 @@ safely falls back to the original direct channel toggle.
 
 ### Safe shutdown
 
-The third Touch Tuner card requires a continuous three-second hold. It plays a
+The third Touch Tuner card requires a continuous one-second hold. It plays a
 short confirmation clip and creates a local shutdown request. A root-owned
 systemd path unit handles the privileged operating-system shutdown, so the
 touch listener itself continues to run as the unprivileged `pi` user.

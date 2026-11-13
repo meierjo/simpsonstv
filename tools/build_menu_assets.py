@@ -128,7 +128,7 @@ def build_image(active_channel, page=0):
         )
     draw.rectangle(SHUTDOWN_CARD, fill=(101, 35, 63), outline=(242, 234, 245), width=4)
     centered(draw, "GOOD NIGHT, SPRINGFIELD", WIDTH // 2, 399, font(22), (255, 246, 197))
-    centered(draw, "HOLD 3 SECONDS TO SHUT DOWN", WIDTH // 2, 432, font(15), (255, 226, 85))
+    centered(draw, "HOLD 1 SECOND TO SHUT DOWN", WIDTH // 2, 432, font(15), (255, 226, 85))
     return image
 
 
