@@ -21,7 +21,6 @@ class MenuTests(unittest.TestCase):
                 [
                     "omxplayer",
                     "--no-osd",
-                    "--loop",
                     "--layer",
                     "10",
                     "--aspect-mode",
