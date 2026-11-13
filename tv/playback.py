@@ -2,6 +2,7 @@
 
 import os
 import pwd
+import re
 import signal
 import subprocess
 import time
@@ -84,10 +85,64 @@ class OmxPlayerBackend:
                 and stop_after is not None
                 and time.monotonic() - started_at >= stop_after
             ):
+                elapsed = time.monotonic() - started_at
+                media_position = self._read_position_safely()
+                if media_position is None:
+                    print(
+                        "Break timing probe: requested=%.3fs media=unavailable "
+                        "elapsed=%.3fs" % (stop_after, elapsed),
+                        flush=True,
+                    )
+                else:
+                    print(
+                        "Break timing probe: requested=%.3fs media=%.3fs "
+                        "elapsed=%.3fs offset=%+.3fs"
+                        % (
+                            stop_after,
+                            media_position,
+                            elapsed,
+                            media_position - stop_after,
+                        ),
+                        flush=True,
+                    )
                 self._stop_process_group(process)
                 return 0
             time.sleep(0.25)
         return process.returncode
+
+    def _read_position_safely(self):
+        """Return OMXPlayer's media position in seconds, or ``None``.
+
+        Position probing is diagnostic for now. A missing D-Bus service must
+        never interrupt an episode or prevent its commercial break.
+        """
+        try:
+            result = subprocess.run(
+                [
+                    "dbus-send",
+                    "--print-reply=literal",
+                    "--session",
+                    "--reply-timeout=250",
+                    "--dest=%s" % self.DBUS_NAME,
+                    "/org/mpris/MediaPlayer2",
+                    "org.freedesktop.DBus.Properties.Get",
+                    "string:org.mpris.MediaPlayer2.Player",
+                    "string:Position",
+                ],
+                env=self._dbus_environment(),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=True,
+                timeout=0.5,
+                universal_newlines=True,
+            )
+        except (OSError, subprocess.SubprocessError, ValueError):
+            return None
+
+        values = re.findall(r"-?\d+", result.stdout)
+        if not values:
+            return None
+        return int(values[-1]) / 1000000.0
 
     def _toggle_pause(self):
         self._send_dbus(

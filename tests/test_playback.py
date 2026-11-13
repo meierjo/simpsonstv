@@ -113,10 +113,13 @@ class PlaybackTests(unittest.TestCase):
         )
 
     @mock.patch("tv.playback.time.sleep")
-    @mock.patch("tv.playback.time.monotonic", side_effect=[10.0, 71.0])
+    @mock.patch("tv.playback.time.monotonic", side_effect=[10.0, 71.0, 71.0])
+    @mock.patch.object(OmxPlayerBackend, "_read_position_safely", return_value=60.125)
     @mock.patch("tv.playback.os.killpg")
     @mock.patch("subprocess.Popen")
-    def test_omxplayer_stops_at_segment_cue(self, popen, killpg, monotonic, sleep):
+    def test_omxplayer_stops_at_segment_cue(
+        self, popen, killpg, read_position, monotonic, sleep
+    ):
         popen.return_value.poll.return_value = None
         popen.return_value.pid = 321
 
@@ -124,7 +127,28 @@ class PlaybackTests(unittest.TestCase):
 
         self.assertEqual(result, 0)
         killpg.assert_called_once_with(321, signal.SIGTERM)
+        read_position.assert_called_once_with()
         sleep.assert_not_called()
+
+    @mock.patch.object(OmxPlayerBackend, "_dbus_environment", return_value={})
+    @mock.patch("tv.playback.subprocess.run")
+    def test_omxplayer_reads_media_position_in_microseconds(
+        self, run, dbus_environment
+    ):
+        run.return_value.stdout = "   variant       int64 16625000\n"
+
+        position = OmxPlayerBackend()._read_position_safely()
+
+        self.assertEqual(position, 16.625)
+        command = run.call_args.args[0]
+        self.assertIn("org.freedesktop.DBus.Properties.Get", command)
+        self.assertIn("string:Position", command)
+
+    @mock.patch.object(
+        OmxPlayerBackend, "_dbus_environment", side_effect=OSError("no bus")
+    )
+    def test_omxplayer_position_probe_fails_open(self, dbus_environment):
+        self.assertIsNone(OmxPlayerBackend()._read_position_safely())
 
     @mock.patch("tv.playback.time.sleep")
     @mock.patch("tv.playback.os.killpg")
