@@ -16,7 +16,7 @@ RIGHT_CARD = (334, 112, 612, 372)
 SPECIAL_LEFT_CARD = (18, 112, 208, 372)
 SPECIAL_CENTER_CARD = (225, 112, 415, 372)
 SPECIAL_RIGHT_CARD = (432, 112, 622, 372)
-SHUTDOWN_CARD = (150, 390, 490, 462)
+SHUTDOWN_CARD = (70, 378, 570, 470)
 
 
 def font(size):
@@ -127,8 +127,8 @@ def build_image(active_channel, page=0):
             title_size=28,
         )
     draw.rectangle(SHUTDOWN_CARD, fill=(101, 35, 63), outline=(242, 234, 245), width=4)
-    centered(draw, "GOOD NIGHT, SPRINGFIELD", WIDTH // 2, 399, font(22), (255, 246, 197))
-    centered(draw, "HOLD 1 SECOND TO SHUT DOWN", WIDTH // 2, 432, font(15), (255, 226, 85))
+    centered(draw, "GOOD NIGHT, SPRINGFIELD", WIDTH // 2, 389, font(25), (255, 246, 197))
+    centered(draw, "HOLD 1 SECOND TO SHUT DOWN", WIDTH // 2, 432, font(17), (255, 226, 85))
     return image
 
 

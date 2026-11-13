@@ -140,6 +140,10 @@ class TouchTests(unittest.TestCase):
 
     def test_shutdown_card_is_separate_from_channel_cards(self):
         self.assertTrue(shutdown_at((320, 425)))
+        self.assertTrue(shutdown_at((75, 385)))
+        self.assertTrue(shutdown_at((565, 465)))
+        self.assertFalse(shutdown_at((65, 425)))
+        self.assertFalse(shutdown_at((320, 475)))
         self.assertFalse(shutdown_at((150, 200)))
         self.assertIsNone(channel_at((320, 425)))
 
