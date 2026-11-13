@@ -102,7 +102,9 @@ the opening touch, then tap a large channel card; playback resumes immediately
 in that mode. Swipe left for special channels and right for the main channels.
 From the main page, swipe right once more to close the tuner and resume the
 same program at the same position. The menu does the same automatically after
-ten seconds of inactivity.
+ten seconds of inactivity. OMXPlayer's D-Bus pause control freezes the media
+clock while the tuner is open; the paused video plane is temporarily moved
+behind the black console so it cannot flash between tuner cards.
 
 Gesture thresholds live in `config/touch.json`. Every completed gesture logs
 its classification, duration, horizontal and vertical displacement, and total

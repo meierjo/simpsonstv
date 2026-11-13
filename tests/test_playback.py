@@ -77,7 +77,15 @@ class PlaybackTests(unittest.TestCase):
 
         self.assertEqual(result, 0)
         popen.assert_called_once_with(
-            ["omxplayer", "--no-osd", "--aspect-mode", "fill", "S01E01.mp4"],
+            [
+                "omxplayer",
+                "--no-osd",
+                "--dbus_name",
+                "org.mpris.MediaPlayer2.omxplayer.tvplayer",
+                "--aspect-mode",
+                "fill",
+                "S01E01.mp4",
+            ],
             start_new_session=True,
         )
 
@@ -93,6 +101,8 @@ class PlaybackTests(unittest.TestCase):
             [
                 "omxplayer",
                 "--no-osd",
+                "--dbus_name",
+                "org.mpris.MediaPlayer2.omxplayer.tvplayer",
                 "--aspect-mode",
                 "fill",
                 "--pos",
@@ -133,10 +143,11 @@ class PlaybackTests(unittest.TestCase):
 
     @mock.patch("tv.playback.time.sleep")
     @mock.patch("tv.playback.time.monotonic", side_effect=[10.0, 11.0, 13.0])
-    @mock.patch("tv.playback.os.killpg")
+    @mock.patch.object(OmxPlayerBackend, "_dbus_environment", return_value={})
+    @mock.patch("tv.playback.subprocess.run")
     @mock.patch("subprocess.Popen")
     def test_touch_menu_pauses_and_resumes_existing_player(
-        self, popen, killpg, monotonic, sleep
+        self, popen, run, dbus_environment, monotonic, sleep
     ):
         popen.return_value.poll.side_effect = [None, None, 0]
         popen.return_value.returncode = 0
@@ -150,11 +161,26 @@ class PlaybackTests(unittest.TestCase):
         )
 
         self.assertEqual(result, 0)
-        self.assertEqual(
-            killpg.call_args_list,
-            [mock.call(222, signal.SIGSTOP), mock.call(222, signal.SIGCONT)],
-        )
+        self.assertEqual(run.call_count, 4)
+        self.assertIn("int32:16", run.call_args_list[0].args[0])
+        self.assertIn("int64:-10", run.call_args_list[1].args[0])
+        self.assertIn("int64:0", run.call_args_list[2].args[0])
+        self.assertIn("int32:16", run.call_args_list[3].args[0])
         self.assertEqual(sleep.call_count, 2)
+
+    @mock.patch.object(OmxPlayerBackend, "_stop_process_group")
+    @mock.patch.object(
+        OmxPlayerBackend, "_toggle_pause", side_effect=RuntimeError("no dbus")
+    )
+    @mock.patch("subprocess.Popen")
+    def test_failed_dbus_pause_cleans_up_player(self, popen, toggle, stop):
+        popen.return_value.poll.return_value = None
+        episode = self.make_episode("S01E01")
+
+        with self.assertRaisesRegex(RuntimeError, "no dbus"):
+            OmxPlayerBackend().play(episode, should_pause=lambda: True)
+
+        stop.assert_called_once_with(popen.return_value)
 
     @mock.patch("tv.playback.os.killpg")
     def test_stubborn_omxplayer_group_is_force_killed(self, killpg):

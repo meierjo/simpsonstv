@@ -1,6 +1,7 @@
 """Player backend and one-episode broadcast controller."""
 
 import os
+import pwd
 import signal
 import subprocess
 import time
@@ -13,8 +14,17 @@ from tv.state import DEFAULT_CHANNEL_ID, PlayerState
 class OmxPlayerBackend:
     """Play one video with the original lightweight Raspberry Pi player."""
 
+    DBUS_NAME = "org.mpris.MediaPlayer2.omxplayer.tvplayer"
+
     def build_command(self, path, start_at=None):
-        command = ["omxplayer", "--no-osd", "--aspect-mode", "fill"]
+        command = [
+            "omxplayer",
+            "--no-osd",
+            "--dbus_name",
+            self.DBUS_NAME,
+            "--aspect-mode",
+            "fill",
+        ]
         if start_at is not None and start_at > 0:
             command.extend(["--pos", format_omx_position(start_at)])
         command.append(str(path))
@@ -40,18 +50,26 @@ class OmxPlayerBackend:
         paused_at = None
         while process.poll() is None:
             if should_stop is not None and should_stop():
-                if paused:
-                    os.killpg(process.pid, signal.SIGCONT)
                 self._stop_process_group(process)
                 return 0
             wants_pause = should_pause is not None and should_pause()
             if wants_pause and not paused:
-                os.killpg(process.pid, signal.SIGSTOP)
+                try:
+                    self._toggle_pause()
+                    self._set_layer(-10)
+                except Exception:
+                    self._stop_process_group(process)
+                    raise
                 paused = True
                 paused_at = time.monotonic()
                 print("Playback paused for touch menu", flush=True)
             elif paused and not wants_pause:
-                os.killpg(process.pid, signal.SIGCONT)
+                try:
+                    self._set_layer(0)
+                    self._toggle_pause()
+                except Exception:
+                    self._stop_process_group(process)
+                    raise
                 paused = False
                 started_at += time.monotonic() - paused_at
                 paused_at = None
@@ -65,6 +83,51 @@ class OmxPlayerBackend:
                 return 0
             time.sleep(0.25)
         return process.returncode
+
+    def _toggle_pause(self):
+        self._send_dbus(
+            "org.mpris.MediaPlayer2.Player.Action",
+            "int32:16",
+        )
+
+    def _set_layer(self, layer):
+        self._send_dbus(
+            "org.mpris.MediaPlayer2.Player.SetLayer",
+            "int64:%d" % int(layer),
+        )
+
+    def _send_dbus(self, method, argument):
+        subprocess.run(
+            [
+                "dbus-send",
+                "--print-reply=literal",
+                "--session",
+                "--reply-timeout=2000",
+                "--dest=%s" % self.DBUS_NAME,
+                "/org/mpris/MediaPlayer2",
+                method,
+                argument,
+            ],
+            env=self._dbus_environment(),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            check=True,
+            timeout=3,
+        )
+
+    @staticmethod
+    def _dbus_environment():
+        user = os.environ.get("USER") or pwd.getpwuid(os.geteuid()).pw_name
+        address_path = "/tmp/omxplayerdbus.%s" % user
+        pid_path = address_path + ".pid"
+        with open(address_path) as address_file:
+            address = address_file.read().strip()
+        with open(pid_path) as pid_file:
+            bus_pid = pid_file.read().strip()
+        environment = os.environ.copy()
+        environment["DBUS_SESSION_BUS_ADDRESS"] = address
+        environment["DBUS_SESSION_BUS_PID"] = bus_pid
+        return environment
 
     def _stop_process_group(self, process):
         try:

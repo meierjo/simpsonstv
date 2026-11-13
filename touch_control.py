@@ -32,6 +32,7 @@ from tv.touch import (
 REPOSITORY_ROOT = Path(__file__).resolve().parent
 TOUCH_NAME = "Goodix Capacitive TouchScreen"
 MENU_TIMEOUT_SECONDS = 10.0
+OVERLAY_WARMUP_SECONDS = 2.0
 
 
 def load_touch_config():
@@ -166,7 +167,9 @@ def run():
             menu = OmxChannelMenu(REPOSITORY_ROOT / "assets")
             active_channel = state_store.load().channel_id
             menu_page = page_for_channel(active_channel)
-            menu.show_buffered(active_channel, page=menu_page)
+            menu.show_current_page(active_channel, page=menu_page)
+            time.sleep(0.6)
+            menu.preload_neighbor(active_channel)
             menu_open = True
             menu_armed = False
             shutdown_confirmation = None
@@ -193,17 +196,22 @@ def run():
         nonlocal shutdown_confirmation_open, menu_deadline
         try:
             if menu is not None:
-                menu.close()
+                menu.discard_preloaded_pages()
             shutdown_confirmation = OmxChannelMenu(
                 REPOSITORY_ROOT / "assets", start_layer=20
             )
             shutdown_confirmation.show_asset("shutdown_confirmation.mp4")
+            time.sleep(OVERLAY_WARMUP_SECONDS)
+            if menu is not None:
+                menu.close()
             shutdown_confirmation_open = True
             menu_deadline = time.monotonic() + MENU_TIMEOUT_SECONDS
             print("Safe shutdown confirmation opened", flush=True)
         except Exception as error:
             if shutdown_confirmation is not None:
                 shutdown_confirmation.close()
+            if menu is not None:
+                menu.close()
             shutdown_confirmation = None
             shutdown_confirmation_open = False
             state_store.set_menu_open(False)
@@ -213,17 +221,25 @@ def run():
     def close_shutdown_confirmation():
         nonlocal menu, menu_open, shutdown_confirmation, shutdown_confirmation_open
         nonlocal menu_deadline
-        if shutdown_confirmation is not None:
-            shutdown_confirmation.close()
+        outgoing_confirmation = shutdown_confirmation
         shutdown_confirmation = None
         shutdown_confirmation_open = False
         shutdown_detector.update(0, time.time())
         try:
             menu = OmxChannelMenu(REPOSITORY_ROOT / "assets")
-            menu.show_buffered(state_store.load().channel_id, page=menu_page)
+            active_channel = state_store.load().channel_id
+            menu.show_current_page(active_channel, page=menu_page)
+            time.sleep(OVERLAY_WARMUP_SECONDS)
+            if outgoing_confirmation is not None:
+                outgoing_confirmation.close()
+            menu.preload_neighbor(active_channel)
             menu_deadline = time.monotonic() + MENU_TIMEOUT_SECONDS
             print("Safe shutdown confirmation cancelled", flush=True)
         except Exception as error:
+            if outgoing_confirmation is not None:
+                outgoing_confirmation.close()
+            if menu is not None:
+                menu.close()
             state_store.set_menu_open(False)
             menu_open = False
             print("Could not restore channel menu (%s)" % error, flush=True)
@@ -418,11 +434,14 @@ def run():
                 ):
                     print("Safe shutdown requested", flush=True)
                     shutdown_hold_active = False
-                    if shutdown_confirmation is not None:
-                        shutdown_confirmation.close()
+                    outgoing_confirmation = shutdown_confirmation
                     shutdown_confirmation = None
                     shutdown_confirmation_open = False
-                    _request_shutdown(menu, state_store)
+                    _request_shutdown(
+                        menu,
+                        state_store,
+                        outgoing_overlay=outgoing_confirmation,
+                    )
                     menu_open = False
                     menu = None
                     detector.update(0, now)
@@ -484,16 +503,23 @@ def _close_menu(menu, state_store):
     return False
 
 
-def _request_shutdown(menu, state_store):
-    if menu is not None:
-        menu.close()
-    goodbye = OmxChannelMenu(REPOSITORY_ROOT / "assets")
+def _request_shutdown(menu, state_store, outgoing_overlay=None):
+    goodbye = OmxChannelMenu(REPOSITORY_ROOT / "assets", start_layer=30)
     try:
         goodbye.show_asset("good_night_springfield.mp4")
-        # OMXPlayer spends much of its startup time before drawing a frame.
-        # Five seconds leaves the farewell readable for roughly three seconds.
-        time.sleep(5.0)
+        # Keep the outgoing card visible while OMXPlayer prepares the farewell.
+        time.sleep(OVERLAY_WARMUP_SECONDS)
+        if outgoing_overlay is not None:
+            outgoing_overlay.close()
+        if menu is not None:
+            menu.close()
+        # Leave the initialized farewell readable before powering down.
+        time.sleep(3.0)
     finally:
+        if outgoing_overlay is not None:
+            outgoing_overlay.close()
+        if menu is not None:
+            menu.close()
         goodbye.close()
 
     request_path = REPOSITORY_ROOT / "runtime" / "shutdown.request"

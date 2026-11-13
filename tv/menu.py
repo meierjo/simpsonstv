@@ -93,17 +93,43 @@ class OmxChannelMenu:
 
     def show_buffered(self, active_channel_id, page):
         """Show *page* and preload its neighbor underneath for instant swipes."""
+        self.show_current_page(active_channel_id, page)
+        self.preload_neighbor(active_channel_id)
+
+    def show_current_page(self, active_channel_id, page):
+        """Start the visible page before spending a decoder on its neighbor."""
         self._current_page = page
         current = self._start_asset(
             self._menu_filename(active_channel_id, page), layer=10
         )
+        self._buffered_pages = {page: current}
+        self.process = current
+        self._next_layer = 9
+
+    def preload_neighbor(self, active_channel_id):
+        """Prepare the other tuner page below the current page."""
+        page = self._current_page
+        if page is None:
+            return
         other_page = 1 - page
+        existing = self._buffered_pages.get(other_page)
+        if existing is not None and existing.poll() is None:
+            return
         other = self._start_asset(
             self._menu_filename(active_channel_id, other_page), layer=9
         )
-        self._buffered_pages = {page: current, other_page: other}
-        self.process = current
+        self._buffered_pages[other_page] = other
         self._next_layer = 8
+
+    def discard_preloaded_pages(self):
+        """Keep the visible page but release hidden menu decoders."""
+        for page, process in list(self._buffered_pages.items()):
+            if process is self.process:
+                continue
+            self._close_process(process)
+            if process in self._processes:
+                self._processes.remove(process)
+            del self._buffered_pages[page]
 
     def switch_buffered_page(self, active_channel_id, page):
         """Reveal a preloaded page and rebuild the old page below it."""
