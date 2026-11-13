@@ -133,7 +133,7 @@ def build_image(active_channel, page=0):
 
 
 def build_now_playing_background():
-    banner_height = 150
+    banner_height = 180
     image = Image.new("RGB", (WIDTH, banner_height), (22, 11, 40))
     draw = ImageDraw.Draw(image)
     draw.rectangle((0, 0, WIDTH, 8), fill=(247, 196, 54))
