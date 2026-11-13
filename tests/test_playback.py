@@ -151,6 +151,25 @@ class PlaybackTests(unittest.TestCase):
         self.assertIsNone(OmxPlayerBackend()._read_position_safely())
 
     @mock.patch("tv.playback.time.sleep")
+    @mock.patch("tv.playback.time.monotonic", side_effect=[10.0, 26.0, 26.0])
+    @mock.patch.object(OmxPlayerBackend, "_read_position_safely", return_value=91.0)
+    @mock.patch.object(OmxPlayerBackend, "_stop_process_group")
+    @mock.patch("subprocess.Popen")
+    def test_position_probe_accounts_for_resume_start(
+        self, popen, stop, read_position, monotonic, sleep
+    ):
+        popen.return_value.poll.return_value = None
+
+        with mock.patch("builtins.print") as print_output:
+            OmxPlayerBackend().play(
+                self.make_episode("S01E01"), start_at=75.0, stop_after=15.0
+            )
+
+        self.assertTrue(
+            any("target=90.000s" in str(call) for call in print_output.call_args_list)
+        )
+
+    @mock.patch("tv.playback.time.sleep")
     @mock.patch("tv.playback.os.killpg")
     @mock.patch("subprocess.Popen")
     def test_omxplayer_stops_group_when_channel_changes(self, popen, killpg, sleep):

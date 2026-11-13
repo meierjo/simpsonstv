@@ -86,22 +86,23 @@ class OmxPlayerBackend:
                 and time.monotonic() - started_at >= stop_after
             ):
                 elapsed = time.monotonic() - started_at
+                target_position = (start_at or 0.0) + stop_after
                 media_position = self._read_position_safely()
                 if media_position is None:
                     print(
-                        "Break timing probe: requested=%.3fs media=unavailable "
-                        "elapsed=%.3fs" % (stop_after, elapsed),
+                        "Break timing probe: target=%.3fs media=unavailable "
+                        "elapsed=%.3fs" % (target_position, elapsed),
                         flush=True,
                     )
                 else:
                     print(
-                        "Break timing probe: requested=%.3fs media=%.3fs "
+                        "Break timing probe: target=%.3fs media=%.3fs "
                         "elapsed=%.3fs offset=%+.3fs"
                         % (
-                            stop_after,
+                            target_position,
                             media_position,
                             elapsed,
-                            media_position - stop_after,
+                            media_position - target_position,
                         ),
                         flush=True,
                     )
