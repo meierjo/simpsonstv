@@ -134,7 +134,7 @@ class OmxInfoOverlay(OmxChannelMenu):
                 "--subtitles",
                 str(subtitle),
                 "--font-size",
-                "64",
+                "140",
                 "--align",
                 "center",
                 "--no-ghost-box",

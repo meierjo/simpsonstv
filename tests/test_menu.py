@@ -89,7 +89,7 @@ class MenuTests(unittest.TestCase):
             self.assertIn("--layer", command)
             self.assertEqual(command[command.index("--layer") + 1], "10")
             self.assertEqual(command[command.index("--win") + 1], "0,300,640,480")
-            self.assertEqual(command[command.index("--font-size") + 1], "64")
+            self.assertEqual(command[command.index("--font-size") + 1], "140")
             self.assertNotIn("--alpha", command)
             self.assertIn("--no-ghost-box", command)
             self.assertIn("--subtitles", command)
