@@ -21,6 +21,7 @@ from tv.catalog import parse_episode  # noqa: E402
 CHAPTER_PATTERN = re.compile(
     r"Chapter #0:0: start [\d.]+, end (?P<end>[\d.]+)"
 )
+BLACK_START_PATTERN = re.compile(r"black_start:(?P<start>[\d.]+)")
 FINGERPRINT_RATE = 8.0
 
 
@@ -51,6 +52,35 @@ def first_chapter_end(ffmpeg, path):
     )
     match = CHAPTER_PATTERN.search(result.stderr)
     return float(match.group("end")) if match else None
+
+
+def opening_black_starts(ffmpeg, path, maximum_seconds=180.0):
+    result = subprocess.run(
+        [
+            ffmpeg,
+            "-hide_banner",
+            "-loglevel",
+            "info",
+            "-t",
+            str(maximum_seconds),
+            "-i",
+            str(path),
+            "-vf",
+            "blackdetect=d=0.15:pix_th=0.10",
+            "-an",
+            "-f",
+            "null",
+            "-",
+        ],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    return tuple(
+        float(match.group("start"))
+        for match in BLACK_START_PATTERN.finditer(result.stderr)
+        if float(match.group("start")) >= 10.0
+    )
 
 
 def fingerprint_episode(fpcalc, episode, cache_directory, length_seconds):
@@ -172,7 +202,21 @@ def choose_audio_prefix_candidate(rows, tolerance=6.0):
     return cue, average_score, len(cluster), best[2]
 
 
-def analyze_candidates(episodes, fingerprints, chapter_ends, maximum_cue=180.0):
+def nearest_black_boundary(cue, boundaries, tolerance=15.0):
+    if cue is None or not boundaries:
+        return None
+    boundary = min(boundaries, key=lambda value: abs(value - cue))
+    return boundary if abs(boundary - cue) <= tolerance else None
+
+
+def analyze_candidates(
+    episodes,
+    fingerprints,
+    chapter_ends,
+    black_starts=None,
+    maximum_cue=180.0,
+):
+    black_starts = black_starts or {}
     candidates = {}
     for episode in episodes:
         chapter_cue = chapter_ends.get(episode.episode_id)
@@ -233,6 +277,14 @@ def analyze_candidates(episodes, fingerprints, chapter_ends, maximum_cue=180.0):
                     if support_count >= 2 and score >= 0.80
                     else "medium"
                 )
+        raw_audio_cue = cue if not plausible else None
+        black_boundary = None
+        if not plausible:
+            black_boundary = nearest_black_boundary(
+                cue, black_starts.get(episode.episode_id, ())
+            )
+            if black_boundary is not None:
+                cue = black_boundary
         candidates[episode.episode_id] = {
             "episode_id": episode.episode_id,
             "title": episode.title,
@@ -248,6 +300,12 @@ def analyze_candidates(episodes, fingerprints, chapter_ends, maximum_cue=180.0):
             "audio_similarity": round(score, 4),
             "audio_peer_count": support_count,
             "detection_method": method,
+            "raw_audio_intro_end": (
+                round(raw_audio_cue, 3) if raw_audio_cue is not None else None
+            ),
+            "black_frame_start": (
+                round(black_boundary, 3) if black_boundary is not None else None
+            ),
             "reviewed": False,
         }
     return candidates
@@ -319,6 +377,7 @@ def run(args):
 
     fingerprint_payloads = {}
     chapter_ends = {}
+    black_starts = {}
     with ThreadPoolExecutor(max_workers=args.workers) as pool:
         fingerprint_jobs = {
             pool.submit(
@@ -334,16 +393,24 @@ def run(args):
             pool.submit(first_chapter_end, ffmpeg, episode.path): episode
             for episode in episodes
         }
+        black_jobs = {
+            pool.submit(opening_black_starts, ffmpeg, episode.path): episode
+            for episode in episodes
+        }
         for job, episode in fingerprint_jobs.items():
             fingerprint_payloads[episode.episode_id] = job.result()
         for job, episode in chapter_jobs.items():
             chapter_ends[episode.episode_id] = job.result()
+        for job, episode in black_jobs.items():
+            black_starts[episode.episode_id] = job.result()
 
     fingerprints = {
         episode_id: payload["fingerprint"]
         for episode_id, payload in fingerprint_payloads.items()
     }
-    candidates = analyze_candidates(episodes, fingerprints, chapter_ends)
+    candidates = analyze_candidates(
+        episodes, fingerprints, chapter_ends, black_starts=black_starts
+    )
     if not args.no_previews:
         build_previews(ffmpeg, output_directory, candidates, workers=args.workers)
     payload = {

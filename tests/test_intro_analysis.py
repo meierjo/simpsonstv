@@ -9,6 +9,7 @@ from tools.analyze_intros import (
     choose_audio_prefix_candidate,
     fingerprint_prefix_end,
     fingerprint_similarity,
+    nearest_black_boundary,
 )
 from tools.review_intro_cues import export_reviewed_cues, load_candidates, save_review
 from tv.catalog import Episode
@@ -92,6 +93,10 @@ class IntroAnalysisTests(unittest.TestCase):
         self.assertEqual(selected[0], 52.0)
         self.assertEqual(selected[2], 2)
 
+    def test_audio_candidate_snaps_to_nearby_black_boundary(self):
+        self.assertEqual(nearest_black_boundary(59.0, (49.2, 74.88)), 49.2)
+        self.assertIsNone(nearest_black_boundary(59.0, (20.0, 90.0)))
+
     def test_invalid_chapter_uses_audio_prefix_as_intro_end(self):
         episodes = (self.episode("S05E01", 1), self.episode("S05E02", 2))
         shared_frames = int(30 * FINGERPRINT_RATE)
@@ -104,11 +109,13 @@ class IntroAnalysisTests(unittest.TestCase):
                 + ([0xFFFFFFFF] * tail_frames),
             },
             {"S05E01": 0.0, "S05E02": 0.0},
+            black_starts={"S05E01": (29.8,), "S05E02": (29.9,)},
         )
         candidate = candidates["S05E01"]
-        self.assertAlmostEqual(candidate["intro_end"], 30.0, delta=0.2)
+        self.assertEqual(candidate["intro_end"], 29.8)
         self.assertEqual(candidate["chapter_end"], 0.0)
         self.assertEqual(candidate["detection_method"], "audio-prefix")
+        self.assertAlmostEqual(candidate["raw_audio_intro_end"], 30.0, delta=0.2)
 
 
 if __name__ == "__main__":
