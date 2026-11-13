@@ -3,6 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from tools.build_break_cues import build_config, collect_chapter_cues
 from tools.analyze_intros import (
     FINGERPRINT_RATE,
     analyze_candidates,
@@ -116,6 +117,35 @@ class IntroAnalysisTests(unittest.TestCase):
         self.assertEqual(candidate["chapter_end"], 0.0)
         self.assertEqual(candidate["detection_method"], "audio-prefix")
         self.assertAlmostEqual(candidate["raw_audio_intro_end"], 30.0, delta=0.2)
+
+    def test_chapter_cue_builder_ignores_missing_zero_and_implausible_values(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            candidates = root / "candidates.json"
+            candidates.write_text(
+                json.dumps(
+                    {
+                        "episodes": {
+                            "S01E01": {"chapter_end": 16.04},
+                            "S01E02": {"chapter_end": 0.0},
+                            "S01E03": {"chapter_end": None},
+                            "S01E04": {"chapter_end": 181.0},
+                        }
+                    }
+                )
+            )
+            self.assertEqual(
+                collect_chapter_cues([candidates]), {"S01E01": 16.04}
+            )
+            destination = root / "break-cues.json"
+            self.assertEqual(build_config([candidates], destination), 1)
+            self.assertEqual(
+                json.loads(destination.read_text()),
+                {
+                    "episode_cues": {"S01E01": 16.04},
+                    "season_defaults": {},
+                },
+            )
 
 
 if __name__ == "__main__":

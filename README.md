@@ -172,7 +172,7 @@ ad never prevents the selected episode from starting.
 
 ### Commercials after the opening
 
-An episode with a verified cue in `config/break_cues.json` uses the more
+An episode with a cue in `config/break_cues.json` uses the more
 television-like sequence:
 
 ```text
@@ -202,7 +202,7 @@ A reviewed episode may still run its commercial after the opening, because the
 first visible content is the show. Set `suppress_initial_preroll` to `false` in
 `config/commercials.json` to disable this cold-start behavior.
 
-#### Detecting and reviewing intro cues
+#### Building intro cues
 
 Run detection on the Mac, not the Pi. It requires FFmpeg and Chromaprint's
 `fpcalc`; Homebrew installs the latter with `brew install chromaprint`.
@@ -215,7 +215,19 @@ five-second previews without modifying the episode files:
 python3 tools/analyze_intros.py /path/to/encoded --season 5
 ```
 
-Review every proposed cut in the private localhost UI:
+The low-maintenance path builds the player configuration strictly from first
+chapter markers between 10 and 180 seconds. Missing, zero, or implausible
+markers are skipped, so those episodes play without an in-episode commercial:
+
+```bash
+python3 tools/build_break_cues.py \
+  analysis/intros/season-*-candidates.json \
+  --output config/break_cues.json
+```
+
+Audio-derived suggestions are never included by this command. Manual review is
+optional for anyone who wants to add cues for skipped episodes. Open one season
+in the private localhost UI:
 
 ```bash
 python3 tools/review_intro_cues.py \
@@ -226,12 +238,13 @@ Compare **Before cut** with **After resume**, adjust the timestamp if needed,
 check **Approved**, and save. Generated fingerprints and previews stay under
 the ignored `analysis/intros/` directory.
 
-Export only approved cues into the player configuration:
+Exporting approved cues writes a season-only configuration, so use a temporary
+file and merge deliberately if keeping cues from other seasons:
 
 ```bash
 python3 tools/review_intro_cues.py \
   analysis/intros/season-05-candidates.json \
-  --export config/break_cues.json
+  --export /tmp/season-05-break-cues.json
 ```
 
 On the Pi, test one reviewed episode deterministically instead of restarting
