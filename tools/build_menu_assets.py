@@ -11,12 +11,12 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 ASSET_DIRECTORY = REPOSITORY_ROOT / "assets"
 WIDTH = 640
 HEIGHT = 480
-LEFT_CARD = (28, 112, 306, 372)
-RIGHT_CARD = (334, 112, 612, 372)
-SPECIAL_LEFT_CARD = (18, 112, 208, 372)
-SPECIAL_CENTER_CARD = (225, 112, 415, 372)
-SPECIAL_RIGHT_CARD = (432, 112, 622, 372)
-SHUTDOWN_CARD = (70, 378, 570, 470)
+LEFT_CARD = (28, 112, 306, 335)
+RIGHT_CARD = (334, 112, 612, 335)
+SPECIAL_LEFT_CARD = (18, 112, 208, 335)
+SPECIAL_CENTER_CARD = (225, 112, 415, 335)
+SPECIAL_RIGHT_CARD = (432, 112, 622, 335)
+SHUTDOWN_CARD = (70, 345, 570, 445)
 
 
 def font(size):
@@ -127,8 +127,8 @@ def build_image(active_channel, page=0):
             title_size=28,
         )
     draw.rectangle(SHUTDOWN_CARD, fill=(101, 35, 63), outline=(242, 234, 245), width=4)
-    centered(draw, "GOOD NIGHT, SPRINGFIELD", WIDTH // 2, 389, font(25), (255, 246, 197))
-    centered(draw, "HOLD 1 SECOND TO SHUT DOWN", WIDTH // 2, 432, font(17), (255, 226, 85))
+    centered(draw, "GOOD NIGHT, SPRINGFIELD", WIDTH // 2, 357, font(25), (255, 246, 197))
+    centered(draw, "HOLD 1 SECOND TO SHUT DOWN", WIDTH // 2, 402, font(17), (255, 226, 85))
     return image
 
 
