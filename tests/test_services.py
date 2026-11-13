@@ -16,6 +16,13 @@ class ServiceTests(unittest.TestCase):
         service = (REPOSITORY_ROOT / "systemd" / "tvplayer.service").read_text()
         self.assertIn("After=local-fs.target tvconsole.service", service)
 
+    def test_wifi_import_runs_as_root_before_networking(self):
+        service = (REPOSITORY_ROOT / "systemd" / "tvwifi.service").read_text()
+        self.assertIn("Before=network-pre.target", service)
+        self.assertIn("User=root", service)
+        self.assertIn("UMask=0077", service)
+        self.assertIn("tools/import_wifi.py", service)
+
 
 if __name__ == "__main__":
     unittest.main()

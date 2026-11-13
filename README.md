@@ -140,6 +140,14 @@ sudo systemctl enable --now tvpower.path
 The request file is removed before shutdown so it cannot cause a shutdown loop
 on the next boot.
 
+### Gift Wi-Fi setup
+
+A recipient can configure a new network without SSH by placing a strict
+three-line `simpsonstv-wifi.txt` file on the SD card's boot partition. The
+boot-time importer keeps a recovery backup, stores only a derived WPA PSK, and
+removes the plaintext request after success. Installation, recovery, and
+security details are in [`docs/GIFT_AND_SECURITY.md`](docs/GIFT_AND_SECURITY.md).
+
 ## Curated channels
 
 In addition to Springfield TV and Treehouse After Dark, the second touchscreen

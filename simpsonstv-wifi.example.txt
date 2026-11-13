@@ -1,0 +1,3 @@
+country=US
+ssid=Example WiFi
+password=example password

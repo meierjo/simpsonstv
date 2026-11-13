@@ -1,0 +1,13 @@
+[Unit]
+Description=Import Simpsons TV Wi-Fi settings from the boot partition
+After=local-fs.target
+Before=network-pre.target
+
+[Service]
+Type=oneshot
+User=root
+UMask=0077
+ExecStart=/usr/bin/python3 /home/pi/simpsonstv/tools/import_wifi.py
+
+[Install]
+WantedBy=multi-user.target
