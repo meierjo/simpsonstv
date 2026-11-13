@@ -18,20 +18,29 @@ class MenuTests(unittest.TestCase):
             OmxChannelMenu(asset_directory).show("springfield-tv")
 
             popen.assert_called_once_with(
-                ["omxplayer", "--no-osd", "--aspect-mode", "fill", str(asset)],
+                [
+                    "omxplayer",
+                    "--no-osd",
+                    "--layer",
+                    "10",
+                    "--aspect-mode",
+                    "fill",
+                    str(asset),
+                ],
                 start_new_session=True,
             )
 
     @mock.patch("tv.menu.os.killpg")
     def test_menu_stops_its_complete_player_group(self, killpg):
         menu = OmxChannelMenu("assets")
-        menu.process = mock.Mock(pid=321)
-        menu.process.poll.return_value = None
+        process = mock.Mock(pid=321)
+        process.poll.return_value = None
+        menu.process = process
 
         menu.close()
 
         killpg.assert_called_once_with(321, signal.SIGTERM)
-        menu.process.wait.assert_called_once_with(timeout=2)
+        process.wait.assert_called_once_with(timeout=2)
 
     def test_missing_menu_asset_has_clear_error(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
@@ -61,9 +70,33 @@ class MenuTests(unittest.TestCase):
             OmxChannelMenu(asset_directory).show_asset(asset.name)
 
             popen.assert_called_once_with(
-                ["omxplayer", "--no-osd", "--aspect-mode", "fill", str(asset)],
+                [
+                    "omxplayer",
+                    "--no-osd",
+                    "--layer",
+                    "10",
+                    "--aspect-mode",
+                    "fill",
+                    str(asset),
+                ],
                 start_new_session=True,
             )
+
+    @mock.patch("tv.menu.subprocess.Popen")
+    def test_menu_pages_are_stacked_for_a_gapless_handoff(self, popen):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            assets = Path(temporary_directory)
+            (assets / "channel_menu_page0_springfield_tv.mp4").touch()
+            (assets / "channel_menu_page1_springfield_tv.mp4").touch()
+            menu = OmxChannelMenu(assets)
+
+            menu.show("springfield-tv", page=0)
+            menu.show("springfield-tv", page=1)
+
+            first_command = popen.call_args_list[0].args[0]
+            second_command = popen.call_args_list[1].args[0]
+            self.assertEqual(first_command[first_command.index("--layer") + 1], "10")
+            self.assertEqual(second_command[second_command.index("--layer") + 1], "11")
 
     @mock.patch("tv.menu.subprocess.Popen")
     def test_info_overlay_uses_higher_layer_and_dynamic_subtitles(self, popen):

@@ -63,6 +63,8 @@ class OmxChannelMenu:
     def __init__(self, asset_directory):
         self.asset_directory = Path(asset_directory)
         self.process = None
+        self._processes = []
+        self._next_layer = 10
 
     def show(self, active_channel_id, page=None):
         if page is None:
@@ -81,25 +83,45 @@ class OmxChannelMenu:
         if not asset.is_file():
             raise RuntimeError("Menu asset is missing: %s" % asset)
         self.process = subprocess.Popen(
-            ["omxplayer", "--no-osd", "--aspect-mode", "fill", str(asset)],
+            [
+                "omxplayer",
+                "--no-osd",
+                "--layer",
+                str(self._next_layer),
+                "--aspect-mode",
+                "fill",
+                str(asset),
+            ],
             start_new_session=True,
         )
+        self._next_layer += 1
+        self._processes.append(self.process)
 
     def close(self):
-        if self.process is None or self.process.poll() is not None:
+        processes = list(self._processes)
+        if self.process is not None and self.process not in processes:
+            processes.append(self.process)
+        for process in reversed(processes):
+            self._close_process(process)
+        self._processes = []
+        self.process = None
+
+    @staticmethod
+    def _close_process(process):
+        if process is None or process.poll() is not None:
             return
         try:
-            os.killpg(self.process.pid, signal.SIGTERM)
+            os.killpg(process.pid, signal.SIGTERM)
         except ProcessLookupError:
             return
         try:
-            self.process.wait(timeout=2)
+            process.wait(timeout=2)
         except subprocess.TimeoutExpired:
             try:
-                os.killpg(self.process.pid, signal.SIGKILL)
+                os.killpg(process.pid, signal.SIGKILL)
             except ProcessLookupError:
                 pass
-            self.process.wait()
+            process.wait()
 
 
 class OmxInfoOverlay(OmxChannelMenu):

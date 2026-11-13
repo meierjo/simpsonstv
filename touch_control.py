@@ -266,7 +266,8 @@ def run():
                                 next_page = page_after_swipe(menu_page, gesture.kind)
                                 if next_page != menu_page:
                                     menu_page = next_page
-                                    menu.close()
+                                    # Keep the old page underneath while OMXPlayer
+                                    # prepares the replacement on a higher layer.
                                     menu.show(
                                         state_store.load().channel_id, page=menu_page
                                     )
