@@ -73,7 +73,7 @@ class MenuTests(unittest.TestCase):
             assets.mkdir()
             background = assets / "now_playing_background.mp4"
             background.touch()
-            overlay = OmxInfoOverlay(assets, root / "runtime", alpha=170)
+            overlay = OmxInfoOverlay(assets, root / "runtime")
 
             shown = overlay.show_details(
                 {
@@ -88,7 +88,9 @@ class MenuTests(unittest.TestCase):
             command = popen.call_args.args[0]
             self.assertIn("--layer", command)
             self.assertEqual(command[command.index("--layer") + 1], "10")
-            self.assertEqual(command[command.index("--alpha") + 1], "170")
+            self.assertEqual(command[command.index("--win") + 1], "0,330,640,480")
+            self.assertNotIn("--alpha", command)
+            self.assertIn("--no-ghost-box", command)
             self.assertIn("--subtitles", command)
             self.assertTrue(shown)
             subtitle = root / "runtime" / "now_playing.srt"

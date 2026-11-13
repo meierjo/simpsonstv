@@ -105,10 +105,9 @@ class OmxChannelMenu:
 class OmxInfoOverlay(OmxChannelMenu):
     """Show a short, silent program card above uninterrupted playback."""
 
-    def __init__(self, asset_directory, runtime_directory, alpha=170):
+    def __init__(self, asset_directory, runtime_directory):
         super().__init__(asset_directory)
         self.runtime_directory = Path(runtime_directory)
-        self.alpha = int(alpha)
 
     def show_details(self, details):
         asset = self.asset_directory / "now_playing_background.mp4"
@@ -126,18 +125,19 @@ class OmxInfoOverlay(OmxChannelMenu):
                 "--no-keys",
                 "--layer",
                 "10",
-                "--alpha",
-                str(self.alpha),
+                "--win",
+                "0,330,640,480",
                 "--aspect-mode",
-                "fill",
+                "stretch",
                 "--vol",
                 "-6000",
                 "--subtitles",
                 str(subtitle),
                 "--font-size",
-                "48",
+                "42",
                 "--align",
                 "center",
+                "--no-ghost-box",
                 "--lines",
                 "4",
                 str(asset),

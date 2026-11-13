@@ -3,6 +3,5 @@
   "swipe_distance_pixels": 80,
   "swipe_axis_ratio": 1.5,
   "menu_hold_seconds": 2.0,
-  "shutdown_hold_seconds": 3.0,
-  "info_alpha": 170
+  "shutdown_hold_seconds": 3.0
 }

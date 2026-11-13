@@ -39,7 +39,6 @@ def load_touch_config():
         "swipe_axis_ratio": 1.5,
         "menu_hold_seconds": 2.0,
         "shutdown_hold_seconds": 3.0,
-        "info_alpha": 170,
     }
     try:
         with (REPOSITORY_ROOT / "config" / "touch.json").open() as config_file:
@@ -125,7 +124,6 @@ def run():
     info_overlay = OmxInfoOverlay(
         REPOSITORY_ROOT / "assets",
         REPOSITORY_ROOT / "runtime",
-        alpha=touch_config["info_alpha"],
     )
     menu_open = False
     menu_armed = False

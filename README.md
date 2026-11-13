@@ -93,7 +93,7 @@ systemd before restarting it.
 
 Quickly tap the playing picture to show a four-second program card with the
 episode title, season, episode number, original broadcast year, and active
-channel. The episode continues underneath the translucent, silent card.
+channel. The episode continues above the compact, silent lower-third banner.
 Additional taps are ignored until the four-second card closes.
 
 Hold one stationary finger on the screen for two seconds to open the
