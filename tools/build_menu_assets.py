@@ -62,9 +62,9 @@ def draw_card(
             font(title_size),
             (255, 249, 218),
         )
-    centered(draw, subtitle, center_x, rectangle[1] + 190, font(18), (28, 15, 43))
+    centered(draw, subtitle, center_x, rectangle[1] + 164, font(18), (28, 15, 43))
     if active:
-        centered(draw, "ON AIR", center_x, rectangle[1] + 222, font(21), (255, 226, 85))
+        centered(draw, "ON AIR", center_x, rectangle[1] + 190, font(21), (255, 226, 85))
 
 
 def build_image(active_channel, page=0):
@@ -74,7 +74,11 @@ def build_image(active_channel, page=0):
     draw.rectangle((0, 18, WIDTH, 27), fill=(40, 191, 190))
     draw.rectangle((0, 28, WIDTH, 34), fill=(236, 83, 146))
     centered(draw, "TOUCH TUNER", WIDTH // 2, 48, font(45), (255, 246, 197))
-    page_label = "MAIN CHANNELS  |  SWIPE LEFT FOR SPECIALS" if page == 0 else "SPECIALS  |  SWIPE RIGHT FOR MAIN"
+    page_label = (
+        "MAIN  |  LEFT: SPECIALS  |  RIGHT: RETURN"
+        if page == 0
+        else "SPECIALS  |  SWIPE RIGHT FOR MAIN"
+    )
     centered(draw, page_label, WIDTH // 2, 88, font(17), (216, 205, 231))
     if page == 0:
         draw_card(

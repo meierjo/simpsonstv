@@ -19,7 +19,14 @@ class FakeBackend:
         self.played = []
         self.options = []
 
-    def play(self, episode, should_stop=None, start_at=None, stop_after=None):
+    def play(
+        self,
+        episode,
+        should_stop=None,
+        should_pause=None,
+        start_at=None,
+        stop_after=None,
+    ):
         self.played.append(episode)
         self.options.append({"start_at": start_at, "stop_after": stop_after})
         return 0
@@ -36,7 +43,14 @@ class FakeCommercialScheduler:
 
 
 class FailingCommercialBackend(FakeBackend):
-    def play(self, item, should_stop=None, start_at=None, stop_after=None):
+    def play(
+        self,
+        item,
+        should_stop=None,
+        should_pause=None,
+        start_at=None,
+        stop_after=None,
+    ):
         self.played.append(item)
         self.options.append({"start_at": start_at, "stop_after": stop_after})
         return 1 if isinstance(item, CommercialClip) else 0
@@ -116,6 +130,31 @@ class PlaybackTests(unittest.TestCase):
         killpg.assert_called_once_with(123, signal.SIGTERM)
         popen.return_value.wait.assert_called_once_with(timeout=3)
         sleep.assert_not_called()
+
+    @mock.patch("tv.playback.time.sleep")
+    @mock.patch("tv.playback.time.monotonic", side_effect=[10.0, 11.0, 13.0])
+    @mock.patch("tv.playback.os.killpg")
+    @mock.patch("subprocess.Popen")
+    def test_touch_menu_pauses_and_resumes_existing_player(
+        self, popen, killpg, monotonic, sleep
+    ):
+        popen.return_value.poll.side_effect = [None, None, 0]
+        popen.return_value.returncode = 0
+        popen.return_value.pid = 222
+        pause_states = iter((True, False))
+
+        result = OmxPlayerBackend().play(
+            self.make_episode("S01E01"),
+            should_stop=lambda: False,
+            should_pause=lambda: next(pause_states),
+        )
+
+        self.assertEqual(result, 0)
+        self.assertEqual(
+            killpg.call_args_list,
+            [mock.call(222, signal.SIGSTOP), mock.call(222, signal.SIGCONT)],
+        )
+        self.assertEqual(sleep.call_count, 2)
 
     @mock.patch("tv.playback.os.killpg")
     def test_stubborn_omxplayer_group_is_force_killed(self, killpg):

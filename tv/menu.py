@@ -47,6 +47,11 @@ def page_after_swipe(page, direction):
     return page
 
 
+def swipe_returns_to_playback(page, direction):
+    """Return True for the outward swipe beyond the main tuner page."""
+    return page == 0 and direction == "swipe-right"
+
+
 def shutdown_at(position):
     """Return True when *position* is inside the guarded shutdown card."""
     return _contains(SHUTDOWN_CARD, position[0], position[1])

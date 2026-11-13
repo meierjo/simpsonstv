@@ -20,7 +20,14 @@ class OmxPlayerBackend:
         command.append(str(path))
         return command
 
-    def play(self, episode, should_stop=None, start_at=None, stop_after=None):
+    def play(
+        self,
+        episode,
+        should_stop=None,
+        should_pause=None,
+        start_at=None,
+        stop_after=None,
+    ):
         # OMXPlayer may launch omxplayer.bin as a child. Give the complete
         # player tree its own process group so a channel change cannot leave
         # the decoder child running behind the next episode.
@@ -29,11 +36,31 @@ class OmxPlayerBackend:
             start_new_session=True,
         )
         started_at = time.monotonic()
+        paused = False
+        paused_at = None
         while process.poll() is None:
             if should_stop is not None and should_stop():
+                if paused:
+                    os.killpg(process.pid, signal.SIGCONT)
                 self._stop_process_group(process)
                 return 0
-            if stop_after is not None and time.monotonic() - started_at >= stop_after:
+            wants_pause = should_pause is not None and should_pause()
+            if wants_pause and not paused:
+                os.killpg(process.pid, signal.SIGSTOP)
+                paused = True
+                paused_at = time.monotonic()
+                print("Playback paused for touch menu", flush=True)
+            elif paused and not wants_pause:
+                os.killpg(process.pid, signal.SIGCONT)
+                paused = False
+                started_at += time.monotonic() - paused_at
+                paused_at = None
+                print("Playback resumed after touch menu", flush=True)
+            if (
+                not paused
+                and stop_after is not None
+                and time.monotonic() - started_at >= stop_after
+            ):
                 self._stop_process_group(process)
                 return 0
             time.sleep(0.25)
@@ -95,8 +122,10 @@ class PlaybackController:
         selected_channel_id = channel.channel_id
 
         def channel_changed():
-            latest_state = self.state_store.load()
-            return latest_state.menu_open or latest_state.channel_id != selected_channel_id
+            return self.state_store.load().channel_id != selected_channel_id
+
+        def menu_open():
+            return self.state_store.load().menu_open
 
         year = broadcast_year_for_episode(
             episode, self.episode_metadata, self.broadcast_years
@@ -117,7 +146,10 @@ class PlaybackController:
         if cue is not None and preroll:
             print("Playing opening of %s to %.1f seconds" % (episode.episode_id, cue), flush=True)
             return_code = self.backend.play(
-                episode, should_stop=channel_changed, stop_after=cue
+                episode,
+                should_stop=channel_changed,
+                should_pause=menu_open,
+                stop_after=cue,
             )
             if channel_changed():
                 return episode, 0
@@ -130,7 +162,9 @@ class PlaybackController:
                 "Playing %s for %d: %s" % (clip.kind, clip.year, clip.path.name),
                 flush=True,
             )
-            return_code = self.backend.play(clip, should_stop=channel_changed)
+            return_code = self.backend.play(
+                clip, should_stop=channel_changed, should_pause=menu_open
+            )
             if channel_changed():
                 return episode, 0
             if return_code:
@@ -154,6 +188,7 @@ class PlaybackController:
         return episode, self.backend.play(
             episode,
             should_stop=channel_changed,
+            should_pause=menu_open,
             start_at=cue if cue is not None and preroll else None,
         )
 

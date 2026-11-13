@@ -15,6 +15,7 @@ from tv.menu import (
     page_after_swipe,
     page_for_channel,
     shutdown_at,
+    swipe_returns_to_playback,
 )
 from tv.now_playing import NowPlayingStore
 from tv.state import StateStore
@@ -266,17 +267,24 @@ def run():
                                 flush=True,
                             )
                             if gesture is not None and gesture.kind.startswith("swipe-"):
-                                next_page = page_after_swipe(menu_page, gesture.kind)
-                                if next_page != menu_page:
-                                    menu_page = next_page
-                                    menu.switch_buffered_page(
-                                        state_store.load().channel_id, page=menu_page
-                                    )
-                                    print(
-                                        "Channel menu page: %d" % (menu_page + 1),
-                                        flush=True,
-                                    )
-                                menu_deadline = time.monotonic() + MENU_TIMEOUT_SECONDS
+                                if swipe_returns_to_playback(menu_page, gesture.kind):
+                                    print("Channel menu returned to playback", flush=True)
+                                    menu_open = _close_menu(menu, state_store)
+                                    menu = None
+                                    detector.update(0, event.timestamp())
+                                    shutdown_detector.update(0, event.timestamp())
+                                else:
+                                    next_page = page_after_swipe(menu_page, gesture.kind)
+                                    if next_page != menu_page:
+                                        menu_page = next_page
+                                        menu.switch_buffered_page(
+                                            state_store.load().channel_id, page=menu_page
+                                        )
+                                        print(
+                                            "Channel menu page: %d" % (menu_page + 1),
+                                            flush=True,
+                                        )
+                                    menu_deadline = time.monotonic() + MENU_TIMEOUT_SECONDS
                             elif gesture is not None and gesture.kind == "tap":
                                 selected = channel_at(
                                     mapped_released_position, page=menu_page
@@ -397,7 +405,9 @@ def _request_shutdown(menu, state_store):
     goodbye = OmxChannelMenu(REPOSITORY_ROOT / "assets")
     try:
         goodbye.show_asset("good_night_springfield.mp4")
-        time.sleep(2.5)
+        # OMXPlayer spends much of its startup time before drawing a frame.
+        # Five seconds leaves the farewell readable for roughly three seconds.
+        time.sleep(5.0)
     finally:
         goodbye.close()
 

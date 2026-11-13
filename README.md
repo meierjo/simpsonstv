@@ -100,7 +100,9 @@ Hold one stationary finger on the screen for two seconds to open the
 full-screen channel menu. Playback pauses while the menu is visible. Release
 the opening touch, then tap a large channel card; playback resumes immediately
 in that mode. Swipe left for special channels and right for the main channels.
-The menu closes without changing channels after ten seconds of inactivity.
+From the main page, swipe right once more to close the tuner and resume the
+same program at the same position. The menu does the same automatically after
+ten seconds of inactivity.
 
 Gesture thresholds live in `config/touch.json`. Every completed gesture logs
 its classification, duration, horizontal and vertical displacement, and total

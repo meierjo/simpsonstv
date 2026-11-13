@@ -13,7 +13,13 @@ from tv.touch import (
     TouchMapper,
     toggle_treehouse_channel,
 )
-from tv.menu import channel_at, page_after_swipe, page_for_channel, shutdown_at
+from tv.menu import (
+    channel_at,
+    page_after_swipe,
+    page_for_channel,
+    shutdown_at,
+    swipe_returns_to_playback,
+)
 
 
 class TouchTests(unittest.TestCase):
@@ -137,6 +143,9 @@ class TouchTests(unittest.TestCase):
         self.assertEqual(page_after_swipe(1, "swipe-left"), 1)
         self.assertEqual(page_after_swipe(1, "swipe-right"), 0)
         self.assertEqual(page_for_channel("krusty-classics"), 1)
+        self.assertTrue(swipe_returns_to_playback(0, "swipe-right"))
+        self.assertFalse(swipe_returns_to_playback(1, "swipe-right"))
+        self.assertFalse(swipe_returns_to_playback(0, "swipe-left"))
 
     def test_shutdown_card_is_separate_from_channel_cards(self):
         self.assertTrue(shutdown_at((320, 425)))
