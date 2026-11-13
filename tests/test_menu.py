@@ -17,12 +17,19 @@ class MenuTests(unittest.TestCase):
 
             OmxChannelMenu(asset_directory).show("springfield-tv")
 
-            command = popen.call_args.args[0]
-            self.assertEqual(command[:2], ["omxplayer", "--no-osd"])
-            self.assertIn("--dbus_name", command)
-            self.assertIn("--loop", command)
-            self.assertEqual(command[command.index("--layer") + 1], "10")
-            self.assertEqual(command[-1], str(asset))
+            popen.assert_called_once_with(
+                [
+                    "omxplayer",
+                    "--no-osd",
+                    "--loop",
+                    "--layer",
+                    "10",
+                    "--aspect-mode",
+                    "fill",
+                    str(asset),
+                ],
+                start_new_session=True,
+            )
 
     @mock.patch("tv.menu.os.killpg")
     def test_menu_stops_its_complete_player_group(self, killpg):
@@ -63,11 +70,18 @@ class MenuTests(unittest.TestCase):
 
             OmxChannelMenu(asset_directory).show_asset(asset.name)
 
-            command = popen.call_args.args[0]
-            self.assertIn("--dbus_name", command)
-            self.assertNotIn("--loop", command)
-            self.assertEqual(command[command.index("--layer") + 1], "10")
-            self.assertEqual(command[-1], str(asset))
+            popen.assert_called_once_with(
+                [
+                    "omxplayer",
+                    "--no-osd",
+                    "--layer",
+                    "10",
+                    "--aspect-mode",
+                    "fill",
+                    str(asset),
+                ],
+                start_new_session=True,
+            )
 
     @mock.patch("tv.menu.subprocess.Popen")
     def test_confirmation_overlay_uses_foreground_layer(self, popen):
@@ -81,12 +95,9 @@ class MenuTests(unittest.TestCase):
             command = popen.call_args.args[0]
             self.assertEqual(command[command.index("--layer") + 1], "20")
 
-    @mock.patch.object(OmxChannelMenu, "_set_process_layer")
     @mock.patch("tv.menu.os.killpg")
     @mock.patch("tv.menu.subprocess.Popen")
-    def test_menu_pages_are_preloaded_for_an_instant_handoff(
-        self, popen, killpg, set_layer
-    ):
+    def test_menu_pages_are_preloaded_for_an_instant_handoff(self, popen, killpg):
         with tempfile.TemporaryDirectory() as temporary_directory:
             assets = Path(temporary_directory)
             (assets / "channel_menu_page0_springfield_tv.mp4").touch()
@@ -106,13 +117,9 @@ class MenuTests(unittest.TestCase):
             self.assertEqual(first_command[first_command.index("--layer") + 1], "10")
             self.assertEqual(second_command[second_command.index("--layer") + 1], "9")
             self.assertEqual(
-                replacement_command[replacement_command.index("--layer") + 1], "9"
+                replacement_command[replacement_command.index("--layer") + 1], "8"
             )
             self.assertIs(menu.process, processes[1])
-            self.assertEqual(
-                set_layer.call_args_list,
-                [mock.call(processes[1], 11), mock.call(processes[1], 10)],
-            )
             killpg.assert_called_once_with(100, signal.SIGTERM)
 
     @mock.patch("tv.menu.subprocess.Popen")

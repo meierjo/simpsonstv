@@ -2,10 +2,8 @@
 
 import os
 from pathlib import Path
-import pwd
 import signal
 import subprocess
-from itertools import count
 
 
 LEFT_CARD = (28, 112, 278, 223)
@@ -16,7 +14,6 @@ SPECIAL_RIGHT_CARD = (432, 112, 190, 223)
 SHUTDOWN_CARD = (70, 345, 500, 100)
 SHUTDOWN_CONFIRM_CARD = (70, 155, 500, 220)
 MENU_PAGE_COUNT = 2
-DBUS_NAME_COUNTER = count(1)
 
 
 def channel_at(position, page=0):
@@ -81,7 +78,6 @@ class OmxChannelMenu:
         self._next_layer = int(start_layer)
         self._buffered_pages = {}
         self._current_page = None
-        self._dbus_names = {}
 
     def show(self, active_channel_id, page=None):
         if page is None:
@@ -138,7 +134,6 @@ class OmxChannelMenu:
             self._close_process(process)
             if process in self._processes:
                 self._processes.remove(process)
-            self._dbus_names.pop(process, None)
             del self._buffered_pages[page]
 
     def switch_buffered_page(self, active_channel_id, page):
@@ -153,20 +148,18 @@ class OmxChannelMenu:
 
         previous_page = self._current_page
         previous = self._buffered_pages.pop(previous_page, None)
-        self._set_process_layer(target, 11)
         self._close_process(previous)
         if previous in self._processes:
             self._processes.remove(previous)
-        self._dbus_names.pop(previous, None)
 
         self._current_page = page
         self.process = target
-        self._set_process_layer(target, 10)
         replacement = self._start_asset(
             self._menu_filename(active_channel_id, previous_page),
-            layer=9,
+            layer=self._next_layer,
             loop=True,
         )
+        self._next_layer -= 1
         self._buffered_pages[previous_page] = replacement
 
     def show_asset(self, filename):
@@ -177,11 +170,7 @@ class OmxChannelMenu:
         asset = self.asset_directory / filename
         if not asset.is_file():
             raise RuntimeError("Menu asset is missing: %s" % asset)
-        dbus_name = "org.mpris.MediaPlayer2.omxplayer.tvtouchmenu.p%d.n%d" % (
-            os.getpid(),
-            next(DBUS_NAME_COUNTER),
-        )
-        command = ["omxplayer", "--no-osd", "--dbus_name", dbus_name]
+        command = ["omxplayer", "--no-osd"]
         if loop:
             command.append("--loop")
         command.extend(
@@ -192,44 +181,7 @@ class OmxChannelMenu:
             start_new_session=True,
         )
         self._processes.append(process)
-        self._dbus_names[process] = dbus_name
         return process
-
-    def _set_process_layer(self, process, layer):
-        dbus_name = self._dbus_names.get(process)
-        if dbus_name is None or process.poll() is not None:
-            raise RuntimeError("Menu page is unavailable for layer handoff")
-        subprocess.run(
-            [
-                "dbus-send",
-                "--print-reply=literal",
-                "--session",
-                "--reply-timeout=2000",
-                "--dest=%s" % dbus_name,
-                "/org/mpris/MediaPlayer2",
-                "org.mpris.MediaPlayer2.Player.SetLayer",
-                "int64:%d" % int(layer),
-            ],
-            env=self._dbus_environment(),
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.PIPE,
-            check=True,
-            timeout=3,
-        )
-
-    @staticmethod
-    def _dbus_environment():
-        user = os.environ.get("USER") or pwd.getpwuid(os.geteuid()).pw_name
-        address_path = "/tmp/omxplayerdbus.%s" % user
-        pid_path = address_path + ".pid"
-        with open(address_path) as address_file:
-            address = address_file.read().strip()
-        with open(pid_path) as pid_file:
-            bus_pid = pid_file.read().strip()
-        environment = os.environ.copy()
-        environment["DBUS_SESSION_BUS_ADDRESS"] = address
-        environment["DBUS_SESSION_BUS_PID"] = bus_pid
-        return environment
 
     def close(self):
         processes = list(self._processes)
@@ -241,7 +193,6 @@ class OmxChannelMenu:
         self.process = None
         self._buffered_pages = {}
         self._current_page = None
-        self._dbus_names = {}
 
     @staticmethod
     def _close_process(process):
