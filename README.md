@@ -234,6 +234,17 @@ python3 tools/review_intro_cues.py \
   --export config/break_cues.json
 ```
 
+On the Pi, test one reviewed episode deterministically instead of restarting
+until the random scheduler happens to choose it. Stop the normal service first;
+the pilot plays the opening, matching-year preroll, and fifteen seconds after
+resume, then exits:
+
+```bash
+sudo systemctl stop tvplayer.service
+python3 tools/preview_intro_break.py S05E10
+sudo systemctl start tvplayer.service
+```
+
 ### Black transitions between videos
 
 OMXPlayer briefly reveals the Linux console when one video closes and the next
