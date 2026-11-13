@@ -137,10 +137,14 @@ def build_now_playing_background():
     draw = ImageDraw.Draw(image)
     draw.rectangle((0, 0, WIDTH, 18), fill=(247, 196, 54))
     draw.rectangle((0, 18, WIDTH, 30), fill=(40, 191, 190))
-    draw.rectangle((30, 48, 610, 430), fill=(39, 20, 73), outline=(255, 226, 85), width=7)
+    # OMXPlayer anchors SRT subtitles near the bottom and has no vertical
+    # positioning option. Frame only the fixed heading and leave the lower
+    # portion clear for episode metadata.
+    draw.rectangle((30, 48, 610, 190), fill=(39, 20, 73), outline=(255, 226, 85), width=7)
     centered(draw, "NOW PLAYING", WIDTH // 2, 72, font(49), (255, 246, 197))
     centered(draw, "SPRINGFIELD VIDEO GUIDE", WIDTH // 2, 128, font(20), (40, 191, 190))
     draw.line((80, 170, 560, 170), fill=(236, 83, 146), width=5)
+    centered(draw, "EPISODE DETAILS", WIDTH // 2, 205, font(18), (255, 226, 85))
     return image
 
 

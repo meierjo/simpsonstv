@@ -73,9 +73,9 @@ class MenuTests(unittest.TestCase):
             assets.mkdir()
             background = assets / "now_playing_background.mp4"
             background.touch()
-            overlay = OmxInfoOverlay(assets, root / "runtime")
+            overlay = OmxInfoOverlay(assets, root / "runtime", alpha=170)
 
-            overlay.show_details(
+            shown = overlay.show_details(
                 {
                     "title": "Springfield",
                     "season": 5,
@@ -88,10 +88,28 @@ class MenuTests(unittest.TestCase):
             command = popen.call_args.args[0]
             self.assertIn("--layer", command)
             self.assertEqual(command[command.index("--layer") + 1], "10")
+            self.assertEqual(command[command.index("--alpha") + 1], "170")
             self.assertIn("--subtitles", command)
+            self.assertTrue(shown)
             subtitle = root / "runtime" / "now_playing.srt"
             self.assertIn("Springfield", subtitle.read_text())
             self.assertIn("SEASON 5  |  EPISODE 10  |  1993", subtitle.read_text())
+
+    @mock.patch("tv.menu.subprocess.Popen")
+    def test_info_overlay_ignores_repeat_tap_while_visible(self, popen):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            assets = root / "assets"
+            assets.mkdir()
+            (assets / "now_playing_background.mp4").touch()
+            popen.return_value.poll.return_value = None
+            overlay = OmxInfoOverlay(assets, root / "runtime")
+            details = {"title": "Springfield"}
+
+            self.assertTrue(overlay.show_details(details))
+            self.assertFalse(overlay.show_details(details))
+
+            popen.assert_called_once()
 
 
 if __name__ == "__main__":
