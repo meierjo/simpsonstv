@@ -130,6 +130,7 @@ def run():
     menu_page = 0
     menu_deadline = None
     pending_released_position = None
+    shutdown_hold_active = False
 
     def stop_service(signum, frame):
         raise KeyboardInterrupt()
@@ -152,6 +153,7 @@ def run():
 
     def open_channel_menu():
         nonlocal menu, menu_open, menu_armed, menu_page, menu_deadline
+        nonlocal shutdown_hold_active
         try:
             info_overlay.close()
             state_store.set_menu_open(True)
@@ -162,6 +164,7 @@ def run():
             menu.show_buffered(active_channel, page=menu_page)
             menu_open = True
             menu_armed = False
+            shutdown_hold_active = False
             gesture_detector.reset()
             menu_deadline = time.monotonic() + MENU_TIMEOUT_SECONDS
             print("Channel menu opened", flush=True)
@@ -293,6 +296,9 @@ def run():
             # fire at their configured durations.
             now = time.time()
             if not menu_open:
+                if shutdown_hold_active:
+                    print("Safe shutdown hold cancelled", flush=True)
+                    shutdown_hold_active = False
                 hold_contacts = (
                     tracker.active_count if gesture_detector.hold_eligible else 0
                 )
@@ -310,13 +316,25 @@ def run():
                     and active_position is not None
                     and shutdown_at(active_position)
                 )
+                shutdown_hold_eligible = (
+                    shutdown_contact and gesture_detector.hold_eligible
+                )
+                if shutdown_hold_eligible:
+                    # A deliberate shutdown hold is activity. Do not let the
+                    # general menu timeout win while its timer is running.
+                    menu_deadline = time.monotonic() + MENU_TIMEOUT_SECONDS
+                    if not shutdown_hold_active:
+                        print("Safe shutdown hold started", flush=True)
+                        shutdown_hold_active = True
+                elif shutdown_hold_active:
+                    print("Safe shutdown hold cancelled", flush=True)
+                    shutdown_hold_active = False
                 if shutdown_detector.update(
-                    1
-                    if shutdown_contact and gesture_detector.hold_eligible
-                    else 0,
+                    1 if shutdown_hold_eligible else 0,
                     now,
                 ):
                     print("Safe shutdown requested", flush=True)
+                    shutdown_hold_active = False
                     _request_shutdown(menu, state_store)
                     menu_open = False
                     menu = None
@@ -386,10 +404,18 @@ def _request_shutdown(menu, state_store):
     request_path = REPOSITORY_ROOT / "runtime" / "shutdown.request"
     request_path.parent.mkdir(parents=True, exist_ok=True)
     request_path.touch()
-    # If the path unit was not installed, do not leave playback permanently
-    # paused. A correctly installed unit will already be powering down.
-    time.sleep(1)
-    state_store.set_menu_open(False)
+    # tvpower.service removes the request before invoking shutdown. Only
+    # resume playback when no installed path unit consumed it.
+    time.sleep(2)
+    if request_path.exists():
+        request_path.unlink()
+        print(
+            "Safe shutdown handler unavailable; playback resumed",
+            flush=True,
+        )
+        state_store.set_menu_open(False)
+    else:
+        print("Safe shutdown request accepted by tvpower.service", flush=True)
 
 
 if __name__ == "__main__":
