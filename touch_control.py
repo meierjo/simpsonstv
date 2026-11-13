@@ -8,14 +8,45 @@ import signal
 import sys
 import time
 
-from tv.menu import OmxChannelMenu, channel_at, shutdown_at
+from tv.menu import (
+    OmxChannelMenu,
+    OmxInfoOverlay,
+    channel_at,
+    page_after_swipe,
+    page_for_channel,
+    shutdown_at,
+)
+from tv.now_playing import NowPlayingStore
 from tv.state import StateStore
-from tv.touch import HoldDetector, MultiTouchTracker, TouchMapper, toggle_treehouse_channel
+from tv.touch import (
+    HoldDetector,
+    MultiTouchTracker,
+    ReleaseGestureDetector,
+    TouchMapper,
+    toggle_treehouse_channel,
+)
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parent
 TOUCH_NAME = "Goodix Capacitive TouchScreen"
 MENU_TIMEOUT_SECONDS = 10.0
+
+
+def load_touch_config():
+    defaults = {
+        "tap_slop_pixels": 24,
+        "swipe_distance_pixels": 80,
+        "swipe_axis_ratio": 1.5,
+        "menu_hold_seconds": 2.0,
+        "shutdown_hold_seconds": 3.0,
+    }
+    try:
+        with (REPOSITORY_ROOT / "config" / "touch.json").open() as config_file:
+            configured = json.load(config_file)
+        defaults.update(configured)
+    except (OSError, ValueError, TypeError):
+        pass
+    return defaults
 
 
 def find_touch_device(evdev):
@@ -71,14 +102,31 @@ def run():
 
     device = find_touch_device(evdev)
     mapper = build_mapper(device, ecodes)
+    touch_config = load_touch_config()
     state_store = StateStore(REPOSITORY_ROOT / "runtime" / "state.json")
+    now_playing_store = NowPlayingStore(
+        REPOSITORY_ROOT / "runtime" / "now_playing.json"
+    )
     state_store.set_menu_open(False)
-    detector = HoldDetector(hold_seconds=2.0, finger_count=1)
-    shutdown_detector = HoldDetector(hold_seconds=3.0, finger_count=1)
+    detector = HoldDetector(
+        hold_seconds=float(touch_config["menu_hold_seconds"]), finger_count=1
+    )
+    shutdown_detector = HoldDetector(
+        hold_seconds=float(touch_config["shutdown_hold_seconds"]), finger_count=1
+    )
+    gesture_detector = ReleaseGestureDetector(
+        tap_slop=float(touch_config["tap_slop_pixels"]),
+        swipe_distance=float(touch_config["swipe_distance_pixels"]),
+        swipe_axis_ratio=float(touch_config["swipe_axis_ratio"]),
+    )
     tracker = MultiTouchTracker()
     menu = None
+    info_overlay = OmxInfoOverlay(
+        REPOSITORY_ROOT / "assets", REPOSITORY_ROOT / "runtime"
+    )
     menu_open = False
     menu_armed = False
+    menu_page = 0
     menu_deadline = None
     pending_released_position = None
 
@@ -114,19 +162,42 @@ def run():
 
                     released_position = pending_released_position
                     pending_released_position = None
+                    active_raw_position = tracker.primary_position
+                    active_position = (
+                        mapper.map(*active_raw_position)
+                        if active_raw_position is not None
+                        else None
+                    )
+                    mapped_released_position = (
+                        mapper.map(*released_position)
+                        if released_position is not None
+                        else None
+                    )
+                    if tracker.active_count == 1 and active_position is not None:
+                        gesture_detector.update(active_position, event.timestamp())
+                    elif tracker.active_count > 1:
+                        gesture_detector.reset()
 
                     if not menu_open:
-                        if detector.update(tracker.active_count, event.timestamp()):
+                        hold_contacts = (
+                            tracker.active_count if gesture_detector.hold_eligible else 0
+                        )
+                        if detector.update(hold_contacts, event.timestamp()):
                             try:
+                                info_overlay.close()
                                 state_store.set_menu_open(True)
                                 time.sleep(0.4)
                                 menu = OmxChannelMenu(REPOSITORY_ROOT / "assets")
-                                menu.show(state_store.load().channel_id)
+                                active_channel = state_store.load().channel_id
+                                menu_page = page_for_channel(active_channel)
+                                menu.show(active_channel, page=menu_page)
                                 menu_open = True
                                 menu_armed = False
+                                gesture_detector.reset()
                                 menu_deadline = time.monotonic() + MENU_TIMEOUT_SECONDS
                                 print("Channel menu opened", flush=True)
                             except Exception as error:
+                                gesture_detector.reset()
                                 if menu is not None:
                                     menu.close()
                                     menu = None
@@ -137,13 +208,40 @@ def run():
                                     % (error, channel_id),
                                     flush=True,
                                 )
+                        elif (
+                            mapped_released_position is not None
+                            and tracker.active_count == 0
+                        ):
+                            gesture = gesture_detector.release(
+                                mapped_released_position, event.timestamp()
+                            )
+                            _log_gesture(gesture, "playback")
+                            if gesture is not None and gesture.kind == "tap":
+                                details = now_playing_store.load()
+                                if details is None:
+                                    print("Now-playing details unavailable", flush=True)
+                                else:
+                                    try:
+                                        info_overlay.show_details(details)
+                                        print(
+                                            "Now-playing card: %s"
+                                            % details["episode_id"],
+                                            flush=True,
+                                        )
+                                    except Exception as error:
+                                        print(
+                                            "Now-playing card unavailable (%s)" % error,
+                                            flush=True,
+                                        )
                     else:
-                        active_position = tracker.primary_position
                         shutdown_contact = False
                         if menu_armed and active_position is not None:
-                            shutdown_contact = shutdown_at(mapper.map(*active_position))
+                            shutdown_contact = shutdown_at(active_position)
                         if shutdown_detector.update(
-                            1 if shutdown_contact else 0, event.timestamp()
+                            1
+                            if shutdown_contact and gesture_detector.hold_eligible
+                            else 0,
+                            event.timestamp(),
                         ):
                             print("Safe shutdown requested", flush=True)
                             _request_shutdown(menu, state_store)
@@ -155,24 +253,47 @@ def run():
                         if not menu_armed and tracker.active_count == 0:
                             # Ignore the release belonging to the opening hold.
                             menu_armed = True
+                            gesture_detector.reset()
                         elif (
                             menu_armed
-                            and released_position is not None
+                            and mapped_released_position is not None
                             and tracker.active_count == 0
                         ):
-                            mapped_position = mapper.map(*released_position)
+                            gesture = gesture_detector.release(
+                                mapped_released_position, event.timestamp()
+                            )
+                            _log_gesture(gesture, "menu")
                             print(
                                 "Touch selection: raw=%s mapped=%s"
-                                % (released_position, mapped_position),
+                                % (released_position, mapped_released_position),
                                 flush=True,
                             )
-                            selected = channel_at(mapped_position)
-                            if selected is not None:
-                                state_store.set_channel(selected)
-                                print("Channel menu selected: %s" % selected, flush=True)
-                                menu_open = _close_menu(menu, state_store)
-                                menu = None
-                                detector.update(0, event.timestamp())
+                            if gesture is not None and gesture.kind.startswith("swipe-"):
+                                next_page = page_after_swipe(menu_page, gesture.kind)
+                                if next_page != menu_page:
+                                    menu_page = next_page
+                                    menu.close()
+                                    menu.show(
+                                        state_store.load().channel_id, page=menu_page
+                                    )
+                                    print(
+                                        "Channel menu page: %d" % (menu_page + 1),
+                                        flush=True,
+                                    )
+                                menu_deadline = time.monotonic() + MENU_TIMEOUT_SECONDS
+                            elif gesture is not None and gesture.kind == "tap":
+                                selected = channel_at(
+                                    mapped_released_position, page=menu_page
+                                )
+                                if selected is not None:
+                                    state_store.set_channel(selected)
+                                    print(
+                                        "Channel menu selected: %s" % selected,
+                                        flush=True,
+                                    )
+                                    menu_open = _close_menu(menu, state_store)
+                                    menu = None
+                                    detector.update(0, event.timestamp())
 
             if menu_open and time.monotonic() >= menu_deadline:
                 print("Channel menu timed out", flush=True)
@@ -183,8 +304,26 @@ def run():
     except KeyboardInterrupt:
         return 0
     finally:
+        info_overlay.close()
         if menu_open:
             _close_menu(menu, state_store)
+
+
+def _log_gesture(gesture, context):
+    if gesture is None:
+        return
+    print(
+        "Touch gesture: context=%s kind=%s duration=%.3f dx=%d dy=%d travel=%.1f"
+        % (
+            context,
+            gesture.kind,
+            gesture.duration,
+            gesture.delta_x,
+            gesture.delta_y,
+            gesture.distance,
+        ),
+        flush=True,
+    )
 
 
 def _track_event(tracker, event, ecodes):

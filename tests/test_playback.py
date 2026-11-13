@@ -8,6 +8,7 @@ import subprocess
 from tv.catalog import Episode
 from tv.channels import Channel
 from tv.commercials import CommercialClip
+from tv.now_playing import NowPlayingStore
 from tv.playback import OmxPlayerBackend, PlaybackController
 from tv.scheduler import EpisodeScheduler
 from tv.state import PlayerState, StateStore
@@ -178,6 +179,28 @@ class PlaybackTests(unittest.TestCase):
             self.assertEqual(selected, episode)
             self.assertEqual(commercial_scheduler.requested_years, [1989])
             self.assertEqual(backend.played, [commercial, episode])
+
+    def test_controller_publishes_current_episode_details(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            store = StateStore(root / "state.json")
+            now_playing = NowPlayingStore(root / "now_playing.json")
+            episode = self.make_episode("S01E01")
+            controller = PlaybackController(
+                channels={"springfield-tv": Channel("springfield-tv", "Channel 6", ())},
+                scheduler=EpisodeScheduler((episode,), {}),
+                state_store=store,
+                backend=FakeBackend(),
+                broadcast_years={1: ((1, 1989), (13, 1990))},
+                now_playing_store=now_playing,
+            )
+
+            controller.play_next()
+
+            details = now_playing.load()
+            self.assertEqual(details["episode_id"], "S01E01")
+            self.assertEqual(details["air_year"], 1989)
+            self.assertEqual(details["channel_name"], "Channel 6")
 
     def test_failed_commercial_does_not_prevent_episode(self):
         with tempfile.TemporaryDirectory() as temporary_directory:

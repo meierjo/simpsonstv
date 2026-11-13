@@ -69,6 +69,7 @@ class PlaybackController:
         broadcast_years=None,
         break_cues=None,
         suppress_initial_preroll=True,
+        now_playing_store=None,
     ):
         self.channels = channels
         self.scheduler = scheduler
@@ -78,6 +79,7 @@ class PlaybackController:
         self.episode_metadata = episode_metadata or {}
         self.broadcast_years = broadcast_years or {}
         self.break_cues = break_cues or {}
+        self.now_playing_store = now_playing_store
         self._initial_broadcast_pending = bool(suppress_initial_preroll)
 
     def play_next(self):
@@ -96,11 +98,14 @@ class PlaybackController:
             latest_state = self.state_store.load()
             return latest_state.menu_open or latest_state.channel_id != selected_channel_id
 
+        year = broadcast_year_for_episode(
+            episode, self.episode_metadata, self.broadcast_years
+        )
+        if self.now_playing_store is not None:
+            self.now_playing_store.save(episode, channel, air_year=year)
+
         preroll = ()
         if self.commercial_scheduler is not None:
-            year = broadcast_year_for_episode(
-                episode, self.episode_metadata, self.broadcast_years
-            )
             preroll = self.commercial_scheduler.choose_preroll(year)
 
         cue = break_cue_for_episode(episode, self.break_cues)

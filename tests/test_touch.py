@@ -8,14 +8,43 @@ from tv.state import StateStore
 from tv.touch import (
     HoldDetector,
     MultiTouchTracker,
+    ReleaseGestureDetector,
     ThreeFingerHoldDetector,
     TouchMapper,
     toggle_treehouse_channel,
 )
-from tv.menu import channel_at, shutdown_at
+from tv.menu import channel_at, page_after_swipe, page_for_channel, shutdown_at
 
 
 class TouchTests(unittest.TestCase):
+    def test_release_gesture_classifies_small_motion_as_tap(self):
+        detector = ReleaseGestureDetector(tap_slop=24, swipe_distance=80)
+        detector.update((100, 100), 1.0)
+        gesture = detector.release((112, 108), 1.3)
+
+        self.assertEqual(gesture.kind, "tap")
+        self.assertAlmostEqual(gesture.duration, 0.3)
+        self.assertEqual((gesture.delta_x, gesture.delta_y), (12, 8))
+
+    def test_release_gesture_classifies_horizontal_swipes(self):
+        detector = ReleaseGestureDetector(tap_slop=24, swipe_distance=80)
+        detector.update((200, 200), 1.0)
+        self.assertTrue(detector.hold_eligible)
+        detector.update((90, 210), 1.4)
+        self.assertFalse(detector.hold_eligible)
+        gesture = detector.release((80, 212), 1.5)
+        self.assertEqual(gesture.kind, "swipe-left")
+
+        detector.update((80, 200), 2.0)
+        gesture = detector.release((190, 190), 2.5)
+        self.assertEqual(gesture.kind, "swipe-right")
+
+    def test_release_gesture_rejects_vertical_or_ambiguous_motion(self):
+        detector = ReleaseGestureDetector(tap_slop=24, swipe_distance=80)
+        detector.update((100, 100), 1.0)
+        gesture = detector.release((140, 210), 1.5)
+        self.assertEqual(gesture.kind, "ignored")
+
     def test_old_evdev_axis_capabilities_are_supported(self):
         expected = SimpleNamespace(min=0, max=639)
 
@@ -96,6 +125,18 @@ class TouchTests(unittest.TestCase):
         self.assertEqual(channel_at((150, 200)), "springfield-tv")
         self.assertEqual(channel_at((480, 200)), "treehouse-after-dark")
         self.assertIsNone(channel_at((320, 450)))
+
+    def test_special_channel_page_has_three_touch_targets(self):
+        self.assertEqual(channel_at((100, 200), page=1), "holiday-special")
+        self.assertEqual(channel_at((320, 200), page=1), "sideshow-bob")
+        self.assertEqual(channel_at((530, 200), page=1), "krusty-classics")
+        self.assertIsNone(channel_at((320, 425), page=1))
+
+    def test_swipes_move_between_bounded_menu_pages(self):
+        self.assertEqual(page_after_swipe(0, "swipe-left"), 1)
+        self.assertEqual(page_after_swipe(1, "swipe-left"), 1)
+        self.assertEqual(page_after_swipe(1, "swipe-right"), 0)
+        self.assertEqual(page_for_channel("krusty-classics"), 1)
 
     def test_shutdown_card_is_separate_from_channel_cards(self):
         self.assertTrue(shutdown_at((320, 425)))

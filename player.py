@@ -10,6 +10,7 @@ from tv.catalog import scan_library
 from tv.breaks import load_break_cues
 from tv.channels import load_channels, load_episode_metadata
 from tv.commercials import CommercialScheduler, load_approved_clips, load_broadcast_years
+from tv.now_playing import NowPlayingStore
 from tv.playback import OmxPlayerBackend, PlaybackController
 from tv.scheduler import EpisodeScheduler
 from tv.state import StateStore
@@ -87,6 +88,9 @@ def main():
         break_cues=break_cues,
         suppress_initial_preroll=commercial_config.get(
             "suppress_initial_preroll", True
+        ),
+        now_playing_store=NowPlayingStore(
+            REPOSITORY_ROOT / "runtime" / "now_playing.json"
         ),
     )
 
