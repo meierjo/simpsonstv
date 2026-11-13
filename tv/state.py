@@ -1,6 +1,8 @@
 """Small atomic state file shared by playback and future touch controls."""
 
 from dataclasses import dataclass
+from contextlib import contextmanager
+import fcntl
 import json
 import os
 from pathlib import Path
@@ -24,6 +26,10 @@ class StateStore:
         self.path = Path(path)
 
     def load(self):
+        with self._lock(exclusive=False):
+            return self._load_unlocked()
+
+    def _load_unlocked(self):
         if not self.path.is_file():
             return PlayerState()
         try:
@@ -45,6 +51,10 @@ class StateStore:
             return PlayerState()
 
     def save(self, state):
+        with self._lock(exclusive=True):
+            self._save_unlocked(state)
+
+    def _save_unlocked(self, state):
         self.path.parent.mkdir(parents=True, exist_ok=True)
         descriptor, temporary_name = tempfile.mkstemp(
             prefix="state-", suffix=".json", dir=str(self.path.parent)
@@ -72,23 +82,35 @@ class StateStore:
                 pass
             raise
 
+    @contextmanager
+    def _lock(self, exclusive):
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with self.path.with_suffix(self.path.suffix + ".lock").open("a+") as lock_file:
+            operation = fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH
+            fcntl.flock(lock_file.fileno(), operation)
+            try:
+                yield
+            finally:
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+
+    def _update(self, channel_id=None, recent_ids=None, menu_open=None):
+        with self._lock(exclusive=True):
+            state = self._load_unlocked()
+            updated = PlayerState(
+                channel_id=state.channel_id if channel_id is None else channel_id,
+                recent_ids=state.recent_ids if recent_ids is None else tuple(recent_ids),
+                menu_open=state.menu_open if menu_open is None else bool(menu_open),
+            )
+            self._save_unlocked(updated)
+            return updated
+
     def set_channel(self, channel_id):
-        state = self.load()
-        updated = PlayerState(
-            channel_id=channel_id,
-            recent_ids=state.recent_ids,
-            menu_open=state.menu_open,
-        )
-        self.save(updated)
-        return updated
+        return self._update(channel_id=channel_id)
 
     def set_menu_open(self, menu_open):
-        state = self.load()
-        updated = PlayerState(
-            channel_id=state.channel_id,
-            recent_ids=state.recent_ids,
-            menu_open=bool(menu_open),
-        )
-        self.save(updated)
-        return updated
+        return self._update(menu_open=menu_open)
+
+    def set_recent_ids(self, recent_ids):
+        """Update playback history without overwriting touch-owned state."""
+        return self._update(recent_ids=recent_ids)
 

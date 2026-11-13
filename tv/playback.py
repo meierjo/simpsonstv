@@ -8,7 +8,7 @@ import time
 
 from tv.breaks import break_cue_for_episode, format_omx_position
 from tv.commercials import broadcast_year_for_episode
-from tv.state import DEFAULT_CHANNEL_ID, PlayerState
+from tv.state import DEFAULT_CHANNEL_ID
 
 
 class OmxPlayerBackend:
@@ -46,6 +46,11 @@ class OmxPlayerBackend:
             start_new_session=True,
         )
         started_at = time.monotonic()
+        print(
+            "Playback timing: OMXPlayer launched monotonic=%.3f item=%s"
+            % (started_at, episode.path.name),
+            flush=True,
+        )
         paused = False
         paused_at = None
         while process.poll() is None:
@@ -179,9 +184,7 @@ class PlaybackController:
             channel = self.channels[DEFAULT_CHANNEL_ID]
 
         episode = self.scheduler.choose_next(channel)
-        self.state_store.save(
-            PlayerState(channel.channel_id, self.scheduler.recent_ids, state.menu_open)
-        )
+        self.state_store.set_recent_ids(self.scheduler.recent_ids)
         selected_channel_id = channel.channel_id
 
         def channel_changed():

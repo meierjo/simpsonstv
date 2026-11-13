@@ -359,12 +359,17 @@ def run():
                                 else:
                                     next_page = page_after_swipe(menu_page, gesture.kind)
                                     if next_page != menu_page:
+                                        swipe_started = time.monotonic()
                                         menu_page = next_page
                                         menu.switch_buffered_page(
                                             state_store.load().channel_id, page=menu_page
                                         )
                                         print(
-                                            "Channel menu page: %d" % (menu_page + 1),
+                                            "Channel menu page: %d; swipe handoff %.3fs"
+                                            % (
+                                                menu_page + 1,
+                                                time.monotonic() - swipe_started,
+                                            ),
                                             flush=True,
                                         )
                                     menu_deadline = time.monotonic() + MENU_TIMEOUT_SECONDS
@@ -382,7 +387,8 @@ def run():
                                 ):
                                     state_store.set_channel(selected)
                                     print(
-                                        "Channel menu selected: %s" % selected,
+                                        "Channel menu selected: %s; monotonic=%.3f"
+                                        % (selected, time.monotonic()),
                                         flush=True,
                                     )
                                     menu_open = _close_menu(menu, state_store)

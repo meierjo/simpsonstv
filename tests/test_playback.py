@@ -363,6 +363,41 @@ class PlaybackTests(unittest.TestCase):
             self.assertFalse(closed.menu_open)
             self.assertEqual(closed.channel_id, "treehouse-after-dark")
 
+    def test_recent_history_update_preserves_concurrent_touch_state(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            store = StateStore(Path(temporary_directory) / "state.json")
+            episode = self.make_episode("S01E01")
+            scheduler = EpisodeScheduler((episode,), {})
+            original_choose = scheduler.choose_next
+
+            def choose_while_touch_updates(channel):
+                selected = original_choose(channel)
+                store.set_channel("treehouse-after-dark")
+                store.set_menu_open(True)
+                return selected
+
+            controller = PlaybackController(
+                channels={
+                    "springfield-tv": Channel("springfield-tv", "Normal", ()),
+                    "treehouse-after-dark": Channel(
+                        "treehouse-after-dark", "Treehouse", ()
+                    ),
+                },
+                scheduler=scheduler,
+                state_store=store,
+                backend=FakeBackend(),
+            )
+
+            with mock.patch.object(
+                scheduler, "choose_next", side_effect=choose_while_touch_updates
+            ):
+                controller.play_next()
+
+            state = store.load()
+            self.assertEqual(state.channel_id, "treehouse-after-dark")
+            self.assertTrue(state.menu_open)
+            self.assertEqual(state.recent_ids, ("S01E01",))
+
     def test_corrupt_state_falls_back_to_normal_tv(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             path = Path(temporary_directory) / "state.json"
