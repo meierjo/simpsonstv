@@ -65,37 +65,82 @@ class OmxChannelMenu:
         self.process = None
         self._processes = []
         self._next_layer = 10
+        self._buffered_pages = {}
+        self._current_page = None
 
     def show(self, active_channel_id, page=None):
         if page is None:
             page = page_for_channel(active_channel_id)
-        stem = "channel_menu_page%d_%s.mp4" % (
+        self.show_asset(self._menu_filename(active_channel_id, page))
+
+    @staticmethod
+    def _menu_filename(active_channel_id, page):
+        return "channel_menu_page%d_%s.mp4" % (
             page,
             active_channel_id.replace("-", "_"),
         )
-        asset = self.asset_directory / stem
-        if not asset.is_file():
-            raise RuntimeError("Channel menu asset is missing: %s" % asset)
-        self.show_asset(stem)
+
+    def show_buffered(self, active_channel_id, page):
+        """Show *page* and preload its neighbor underneath for instant swipes."""
+        self._current_page = page
+        current = self._start_asset(
+            self._menu_filename(active_channel_id, page), layer=10
+        )
+        other_page = 1 - page
+        other = self._start_asset(
+            self._menu_filename(active_channel_id, other_page), layer=9
+        )
+        self._buffered_pages = {page: current, other_page: other}
+        self.process = current
+        self._next_layer = 8
+
+    def switch_buffered_page(self, active_channel_id, page):
+        """Reveal a preloaded page and rebuild the old page below it."""
+        if self._current_page == page:
+            return
+        target = self._buffered_pages.get(page)
+        if target is None or target.poll() is not None:
+            self.show(active_channel_id, page=page)
+            self._current_page = page
+            return
+
+        previous_page = self._current_page
+        previous = self._buffered_pages.pop(previous_page, None)
+        self._close_process(previous)
+        if previous in self._processes:
+            self._processes.remove(previous)
+
+        self._current_page = page
+        self.process = target
+        replacement = self._start_asset(
+            self._menu_filename(active_channel_id, previous_page),
+            layer=self._next_layer,
+        )
+        self._next_layer -= 1
+        self._buffered_pages[previous_page] = replacement
 
     def show_asset(self, filename):
+        self.process = self._start_asset(filename, layer=self._next_layer)
+        self._next_layer += 1
+
+    def _start_asset(self, filename, layer):
         asset = self.asset_directory / filename
         if not asset.is_file():
             raise RuntimeError("Menu asset is missing: %s" % asset)
-        self.process = subprocess.Popen(
+        process = subprocess.Popen(
             [
                 "omxplayer",
                 "--no-osd",
                 "--layer",
-                str(self._next_layer),
+                str(layer),
                 "--aspect-mode",
                 "fill",
                 str(asset),
             ],
             start_new_session=True,
         )
-        self._next_layer += 1
-        self._processes.append(self.process)
+        self._processes.append(process)
+        return process
 
     def close(self):
         processes = list(self._processes)
@@ -105,6 +150,8 @@ class OmxChannelMenu:
             self._close_process(process)
         self._processes = []
         self.process = None
+        self._buffered_pages = {}
+        self._current_page = None
 
     @staticmethod
     def _close_process(process):

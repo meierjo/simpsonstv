@@ -159,7 +159,7 @@ def run():
             menu = OmxChannelMenu(REPOSITORY_ROOT / "assets")
             active_channel = state_store.load().channel_id
             menu_page = page_for_channel(active_channel)
-            menu.show(active_channel, page=menu_page)
+            menu.show_buffered(active_channel, page=menu_page)
             menu_open = True
             menu_armed = False
             gesture_detector.reset()
@@ -266,9 +266,7 @@ def run():
                                 next_page = page_after_swipe(menu_page, gesture.kind)
                                 if next_page != menu_page:
                                     menu_page = next_page
-                                    # Keep the old page underneath while OMXPlayer
-                                    # prepares the replacement on a higher layer.
-                                    menu.show(
+                                    menu.switch_buffered_page(
                                         state_store.load().channel_id, page=menu_page
                                     )
                                     print(

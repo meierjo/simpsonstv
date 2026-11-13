@@ -82,21 +82,32 @@ class MenuTests(unittest.TestCase):
                 start_new_session=True,
             )
 
+    @mock.patch("tv.menu.os.killpg")
     @mock.patch("tv.menu.subprocess.Popen")
-    def test_menu_pages_are_stacked_for_a_gapless_handoff(self, popen):
+    def test_menu_pages_are_preloaded_for_an_instant_handoff(self, popen, killpg):
         with tempfile.TemporaryDirectory() as temporary_directory:
             assets = Path(temporary_directory)
             (assets / "channel_menu_page0_springfield_tv.mp4").touch()
             (assets / "channel_menu_page1_springfield_tv.mp4").touch()
+            processes = [mock.Mock(pid=100 + index) for index in range(3)]
+            for process in processes:
+                process.poll.return_value = None
+            popen.side_effect = processes
             menu = OmxChannelMenu(assets)
 
-            menu.show("springfield-tv", page=0)
-            menu.show("springfield-tv", page=1)
+            menu.show_buffered("springfield-tv", page=0)
+            menu.switch_buffered_page("springfield-tv", page=1)
 
             first_command = popen.call_args_list[0].args[0]
             second_command = popen.call_args_list[1].args[0]
+            replacement_command = popen.call_args_list[2].args[0]
             self.assertEqual(first_command[first_command.index("--layer") + 1], "10")
-            self.assertEqual(second_command[second_command.index("--layer") + 1], "11")
+            self.assertEqual(second_command[second_command.index("--layer") + 1], "9")
+            self.assertEqual(
+                replacement_command[replacement_command.index("--layer") + 1], "8"
+            )
+            self.assertIs(menu.process, processes[1])
+            killpg.assert_called_once_with(100, signal.SIGTERM)
 
     @mock.patch("tv.menu.subprocess.Popen")
     def test_info_overlay_uses_higher_layer_and_dynamic_subtitles(self, popen):
