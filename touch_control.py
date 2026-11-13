@@ -40,7 +40,7 @@ def load_touch_config():
         "tap_slop_pixels": 24,
         "swipe_distance_pixels": 80,
         "swipe_axis_ratio": 1.5,
-        "menu_hold_seconds": 2.0,
+        "menu_hold_seconds": 1.25,
         "shutdown_hold_seconds": 1.0,
     }
     try:
