@@ -59,11 +59,10 @@ No additional button or case modification is planned. The Waveshare display
 already provides five-point capacitive touch over I2C, so the glass becomes a
 secret control surface while normal playback remains visually uncluttered.
 
-- **One-finger hold for 2 seconds:** open the hidden channel overlay. This is
-  dependable on the small display while remaining unlikely during normal use.
+- **Swipe left:** open the hidden channel overlay on its main page; swipe left
+  again for special channels.
 - **Tap a channel card:** change channels and briefly show its broadcast ident.
-- **Swipe left or right:** browse the available special channels.
-- **Tap the currently active channel:** close the overlay and return to the
+- **Swipe right:** browse back toward the main page, then return to the
   broadcast.
 - **Inactivity:** close the overlay automatically after 10 seconds.
 
@@ -252,7 +251,7 @@ recent episodes are avoided, and a failed file cannot stop playback.
 
 - Implement `Treehouse After Dark` from metadata tags.
 - Read touch events from the existing Waveshare capacitive panel.
-- Add the one-finger hold and a keyboard/mouse equivalent on macOS.
+- Add swipe-and-tap touch controls and a keyboard/mouse equivalent on macOS.
 - Build a large-target channel overlay that disappears automatically.
 - Create a simple pre-rendered channel card.
 
@@ -312,7 +311,7 @@ using the curated metadata rather than title matching.
 
 - Whether safe shutdown should be shown in the channel overlay or one level
   deeper to prevent accidents
-- Whether the hold should work anywhere or only inside a generous secret zone
+- Whether the menu-opening swipe needs a discoverability hint
 - Chronological versus shuffled Treehouse playback
 - One commercial versus a short randomized commercial block by default
 - Whether the TV should resume its previous special channel after reboot or

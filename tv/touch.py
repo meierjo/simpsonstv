@@ -9,6 +9,15 @@ from tv.state import DEFAULT_CHANNEL_ID
 TREEHOUSE_CHANNEL_ID = "treehouse-after-dark"
 
 
+def playback_action_for_gesture(kind):
+    """Map a completed playback gesture to its one allowed action."""
+    if kind == "tap":
+        return "show-now-playing"
+    if kind == "swipe-left":
+        return "open-menu"
+    return None
+
+
 @dataclass(frozen=True)
 class ReleaseGesture:
     kind: str

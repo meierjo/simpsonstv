@@ -13,7 +13,6 @@ from tv.menu import (
     OmxInfoOverlay,
     channel_at,
     page_after_swipe,
-    page_for_channel,
     shutdown_at,
     shutdown_confirm_at,
     swipe_returns_to_playback,
@@ -25,6 +24,7 @@ from tv.touch import (
     MultiTouchTracker,
     ReleaseGestureDetector,
     TouchMapper,
+    playback_action_for_gesture,
     toggle_treehouse_channel,
 )
 
@@ -40,7 +40,6 @@ def load_touch_config():
         "tap_slop_pixels": 24,
         "swipe_distance_pixels": 80,
         "swipe_axis_ratio": 1.5,
-        "menu_hold_seconds": 1.25,
         "shutdown_hold_seconds": 1.0,
     }
     try:
@@ -111,9 +110,6 @@ def run():
         REPOSITORY_ROOT / "runtime" / "now_playing.json"
     )
     state_store.set_menu_open(False)
-    detector = HoldDetector(
-        hold_seconds=float(touch_config["menu_hold_seconds"]), finger_count=1
-    )
     shutdown_detector = HoldDetector(
         hold_seconds=float(touch_config["shutdown_hold_seconds"]), finger_count=1
     )
@@ -141,7 +137,11 @@ def run():
         raise KeyboardInterrupt()
 
     signal.signal(signal.SIGTERM, stop_service)
-    print("Listening for one-finger hold on %s (%s)" % (device.name, device.path), flush=True)
+    print(
+        "Listening for swipe-and-tap gestures on %s (%s)"
+        % (device.name, device.path),
+        flush=True,
+    )
     print(
         "Touch mapping: x=%s..%s y=%s..%s rotation=%s display=%sx%s"
         % (
@@ -166,12 +166,17 @@ def run():
             time.sleep(0.4)
             menu = OmxChannelMenu(REPOSITORY_ROOT / "assets")
             active_channel = state_store.load().channel_id
-            menu_page = page_for_channel(active_channel)
+            # Playback always enters on the main tuner page. A second
+            # left-swipe advances to the special-channel page.
+            menu_page = 0
             menu.show_current_page(active_channel, page=menu_page)
             time.sleep(0.6)
             menu.preload_neighbor(active_channel)
             menu_open = True
-            menu_armed = False
+            # The opening swipe has already been released, so the very next
+            # menu gesture must be accepted rather than consumed as the old
+            # hold-to-open release was.
+            menu_armed = True
             shutdown_confirmation = None
             shutdown_confirmation_open = False
             shutdown_hold_active = False
@@ -282,12 +287,10 @@ def run():
                                 mapped_released_position, event.timestamp()
                             )
                             _log_gesture(gesture, "playback")
-                            if (
-                                gesture is not None
-                                and gesture.kind == "tap"
-                                and gesture.duration
-                                < float(touch_config["menu_hold_seconds"])
-                            ):
+                            action = playback_action_for_gesture(
+                                gesture.kind if gesture is not None else None
+                            )
+                            if action == "show-now-playing":
                                 details = now_playing_store.load()
                                 if details is None:
                                     print("Now-playing details unavailable", flush=True)
@@ -309,9 +312,12 @@ def run():
                                             "Now-playing card unavailable (%s)" % error,
                                             flush=True,
                                         )
+                            elif action == "open-menu":
+                                open_channel_menu()
                     else:
                         if not menu_armed and tracker.active_count == 0:
-                            # Ignore the release belonging to the opening hold.
+                            # Retained as a defensive guard for any future
+                            # opening path that begins while a finger is down.
                             menu_armed = True
                             gesture_detector.reset()
                         elif (
@@ -354,7 +360,6 @@ def run():
                                     print("Channel menu returned to playback", flush=True)
                                     menu_open = _close_menu(menu, state_store)
                                     menu = None
-                                    detector.update(0, event.timestamp())
                                     shutdown_detector.update(0, event.timestamp())
                                 else:
                                     next_page = page_after_swipe(menu_page, gesture.kind)
@@ -393,21 +398,15 @@ def run():
                                     )
                                     menu_open = _close_menu(menu, state_store)
                                     menu = None
-                                    detector.update(0, event.timestamp())
 
             # Goodix sends no events while a finger is perfectly still. Drive
-            # the hold timers from the polling clock so stationary holds still
-            # fire at their configured durations.
+            # the guarded shutdown timer from the polling clock so its hold
+            # still fires at the configured duration.
             now = time.time()
             if not menu_open:
                 if shutdown_hold_active:
                     print("Safe shutdown hold cancelled", flush=True)
                     shutdown_hold_active = False
-                hold_contacts = (
-                    tracker.active_count if gesture_detector.hold_eligible else 0
-                )
-                if detector.update(hold_contacts, now):
-                    open_channel_menu()
             else:
                 active_raw_position = tracker.primary_position
                 active_position = (
@@ -450,7 +449,6 @@ def run():
                     )
                     menu_open = False
                     menu = None
-                    detector.update(0, now)
                     continue
 
             if menu_open and time.monotonic() >= menu_deadline:
@@ -461,7 +459,6 @@ def run():
                     shutdown_confirmation_open = False
                 menu_open = _close_menu(menu, state_store)
                 menu = None
-                detector.update(0, time.time())
                 shutdown_detector.update(0, time.time())
     except KeyboardInterrupt:
         return 0

@@ -11,6 +11,7 @@ from tv.touch import (
     ReleaseGestureDetector,
     ThreeFingerHoldDetector,
     TouchMapper,
+    playback_action_for_gesture,
     toggle_treehouse_channel,
 )
 from tv.menu import (
@@ -76,7 +77,7 @@ class TouchTests(unittest.TestCase):
 
         self.assertIs(result, expected)
 
-    def test_one_finger_hold_triggers_after_two_seconds(self):
+    def test_hold_detector_remains_available_for_guarded_shutdown(self):
         detector = HoldDetector(hold_seconds=2.0)
 
         self.assertFalse(detector.update(1, 4.0))
@@ -147,6 +148,20 @@ class TouchTests(unittest.TestCase):
         self.assertTrue(swipe_returns_to_playback(0, "swipe-right"))
         self.assertFalse(swipe_returns_to_playback(1, "swipe-right"))
         self.assertFalse(swipe_returns_to_playback(0, "swipe-left"))
+
+    def test_playback_and_tuner_follow_left_left_right_right_sequence(self):
+        self.assertEqual(
+            playback_action_for_gesture("tap"), "show-now-playing"
+        )
+        self.assertEqual(playback_action_for_gesture("swipe-left"), "open-menu")
+        self.assertIsNone(playback_action_for_gesture("swipe-right"))
+
+        page = 0
+        page = page_after_swipe(page, "swipe-left")
+        self.assertEqual(page, 1)
+        page = page_after_swipe(page, "swipe-right")
+        self.assertEqual(page, 0)
+        self.assertTrue(swipe_returns_to_playback(page, "swipe-right"))
 
     def test_shutdown_card_is_separate_from_channel_cards(self):
         self.assertTrue(shutdown_at((320, 425)))

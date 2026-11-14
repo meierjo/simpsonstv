@@ -96,21 +96,23 @@ episode title, season, episode number, original broadcast year, and active
 channel. The episode continues above the compact, silent lower-third banner.
 Additional taps are ignored until the four-second card closes.
 
-Hold one stationary finger on the screen for two seconds to open the
-full-screen channel menu. Playback pauses while the menu is visible. Release
-the opening touch, then tap a large channel card; playback resumes immediately
-in that mode. Swipe left for special channels and right for the main channels.
-From the main page, swipe right once more to close the tuner and resume the
-same program at the same position. The menu does the same automatically after
-ten seconds of inactivity. OMXPlayer's D-Bus pause control freezes the media
-clock while the tuner is open; the paused video plane is temporarily moved
-behind the black console so it cannot flash between tuner cards.
+Swipe left across the playing picture to open the full-screen channel menu on
+its main page. Playback pauses while the menu is visible. Tap a large channel
+card to select it, swipe left again for special channels, and swipe right to
+walk back through the pages. A right swipe from the main page closes the tuner
+and resumes the same program at the same position. The menu does the same
+automatically after ten seconds of inactivity. OMXPlayer's D-Bus pause control
+freezes the media clock while the tuner is open; the paused video plane is
+temporarily moved behind the black console so it cannot flash between tuner
+cards.
 
 Gesture thresholds live in `config/touch.json`. Every completed gesture logs
 its classification, duration, horizontal and vertical displacement, and total
 travel so the Goodix panel can be tuned without changing code. Movement beyond
-the tap tolerance cancels a hold; the release after a successful hold is
-consumed and cannot also become a tap.
+the tap tolerance prevents a touch from becoming a tap. Horizontal movement
+must clear both the distance and directional-dominance thresholds to become a
+swipe. The only remaining hold gesture is on the separate guarded shutdown
+confirmation screen.
 
 The listener uses the Linux `evdev` interface and the existing Goodix
 capacitive touchscreen. The menu itself is a tiny pre-rendered H.264 clip
